@@ -2,16 +2,19 @@ import numpy as np
 
 class StochasticGradientDescent:
 
-    def __init__(self, wavefunction, learning_rate):
+    def __init__(self, wavefunction):
         """constructor"""
     
         self.wavefunction = wavefunction
         self.num_params = self.wavefunction.M*self.wavefunction.N+2*self.wavefunction.M
-        self.eta = learning_rate
+        self.iterations = 1
         
         
     def update_params(self, gradient):
         """shift wavefunction parameters"""
-        self.wavefunction.alpha -= self.eta*gradient
-        self.wavefunction.W, self.wavefunction.w, self.wavefunction.b \
+
+        eta = 0.1/self.iterations
+        self.wavefunction.alpha -= eta*gradient
+        self.wavefunction.W, self.wavefunction.b, self.wavefunction.w \
                                  = self.wavefunction.separate(self.wavefunction.alpha)
+        self.iterations += 1

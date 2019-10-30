@@ -1,0 +1,372 @@
+\documentclass[prb,aps,twocolumn,showpacs,10pt]{revtex4-1}
+\pdfoutput=1
+\usepackage{dcolumn}% Align table columns on decimal point
+\usepackage{bm}% bold math
+
+%\usepackage{anysize}
+\usepackage[colorlinks,hyperindex, urlcolor=blue, linkcolor=blue,citecolor=black, linkbordercolor={.7 .8 .8}]{hyperref}
+\usepackage{graphicx}
+%\usepackage{tabularx}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsbsy}
+\usepackage{tikz}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{nicefrac}
+\usetikzlibrary{arrows,shapes,positioning}
+\newenvironment{psmallmatrix}
+  {\left[\begin{matrix}}
+  {\end{matrix}\right]}
+\usetikzlibrary{arrows,shapes,positioning}
+\usetikzlibrary{decorations.markings}
+ \usepackage{listings}
+\usepackage{color}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\usepackage{geometry}
+\geometry{margin=0.8in}
+\lstset{frame=tb,
+  language=Java,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
+\usepackage[percent]{overpic}
+
+\begin{document}
+
+\title {Solving Quantum Many-Body Problems with Neural Networks}
+\author{Jane Kim}
+\date{\today}
+\begin{abstract}
+\vspace*{3mm}
+This project aims to solve for the ground state energy of a system of one-dimensional bosons using the variational Monte Carlo method enhanced by machine learning. The trial wave function is replaced by a feedforward neural network of one hidden layer. The natural cost function for a variational problem is the energy of the system, which we will compute stochastically and minimize with respect to the weights and biases of the network. The particular model of choice is exactly solvable, so the accuracy of the final result for the ground state energy and wave function can be measured quantitatively.
+\end{abstract}
+
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Introduction}
+
+The wave function $\Psi$ of an isolated quantum system is a complex mathematical quantity that depends on its degrees of freedom and fully characterizes its state. For example, if the degrees of freedom are the spatial coordinates $\bm{x}$ of all the particles in the system, then the square of the wave function $| \Psi(\bm{x}) |^2$ is the probability of the configuration occurring. The amount of information that needs to be encoded in the wave function grows exponentially with the number of particles in the system, posing a difficult computational problem for our limited classical resources. Typical methods that rely on calculating the wave function attempt to either compress the quantum state efficiently or sample a finite number of particle configurations that contribute the most to the description of the system. The goal of this project is to combine both approaches by using machine learning to enhance a traditional variational Monte Carlo calculation. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Theory}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Calogero-Sutherland Model}
+
+We will use this hybrid method to calculate the ground state energy of a simple 1D quantum system of $N$ bosons. In the Calogero-Sutherland model, the bosons are trapped in a harmonic oscillator potential and interact via a pair-wise inverse squared potential. The Hamiltonian, or energy operator, of the system can be written as
+\begin{equation}
+\hat{H} = \sum_{i=1}^N \left( - \frac{1}{2}\frac{\partial^2}{\partial x_i^2} + \frac{1}{2} x_i^2 \right) + \sum_{i < j}^N \frac{\nu (\nu-1)}{(x_i-x_j)^2},
+\end{equation}
+where $x_i$ is the position of the $i$th particle, $\nu$ is an interaction parameter, and the constants $\hbar, m, \omega$ are set to one for convenience. Then the energy of the system in the state $\Psi(\bm{x})$ is given by
+\begin{equation}
+E = \frac{\int \Psi^\dag (\bm{x})\hat{H} \Psi(\bm{x}) d \bm{x} }{\int \Psi^\dag(\bm{x}) \Psi(\bm{x}) d \bm{x} }\equiv \frac{\langle \Psi | \hat{H} | \Psi \rangle}{\langle \Psi |  \Psi \rangle}.
+\end{equation}
+
+The most probable state for any isolated quantum system is the ground state. So it is of particular interest to calculate the ground state wave function $\Psi_0$ that produces the lowest possible energy $E_0$ using equation (2). For our system of bosons, these quantities can be found analytically and are given by
+\begin{equation}
+\Psi_0^{exact} (\bm{x}) = \exp \left( -\frac{1}{2}\sum_{i=1}^N x_i^2 \right) \prod_{i<j}^N | x_i-x_j |^\nu,
+\end{equation}
+and
+\begin{equation}
+E_0^{exact} = \frac{N}{2} + \frac{\nu}{2}N(N-1).
+\end{equation}
+Since this system is exactly solvable, we will be able to quantitatively measure the performance of our algorithm. Notice that in the non-interacting case, the bosons are only trapped in a harmonic oscillator, so the ground state is a simple gaussian
+\begin{equation}
+\Psi_0^{non\text{-}int} (\bm{x}) = \exp \left( -\frac{1}{2}\sum_{i=1}^N x_i^2 \right).
+\end{equation}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Variational Monte Carlo}
+
+The variational principle states that for \textit{any} guess for the ground state wave function $\Psi$, the expectation value of the energy is an upper bound for the true ground state energy:
+\begin{equation}
+E_0 \leq E = \frac{\langle \Psi | \hat{H} | \Psi \rangle}{\langle \Psi |  \Psi \rangle}.
+\end{equation}
+This integral is typically very high dimensional, so it is calculated using Monte Carlo integration.  For this principle to be useful, we need to provide a very good guess for the ground state wave function. The traditional approach would be to use physical intuition about the problem to design a parametrized trial wave function $\Psi_T(\bm{x}; \bm{\alpha})$ that has expected limiting behaviors based on theory or a form inspired by experiment. By allowing the wave function to be "flexible", we can find a better upper bound for $E_0$ by minimizing $E$ with respect to the parameters $\bm{\alpha}$. 
+
+One issue with this approach is that it heavily relies on the physical intuition of the researcher. If the trial wave function is parametrized in the wrong way, it will not provide a decent upper bound for the ground state energy. Another issue is that it lacks broad applicability, because each system encountered requires a new, physically motivated guess for the trial wave function.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Universal Approximation Theorem}
+
+What we need to overcome the limitations of the traditional variational Monte Carlo method is a maximally flexible trial wave function. Luckily, machine learning may provide the solution. The universal approximation theorem states that a feedforward neural network of just one hidden layer can approximate any continuous function, provided there are enough hidden neurons. This suggests we can use such a network to represent our trial wave function, and minimize the energy with respect to the weights and biases of the network. Not only could this approach alleviate the unnecessary restrictions on $\Psi_T$ that are imposed by human intuition, but it could also allow us to repurpose the same trial wave function for a wide range of systems. In our case, the neural network will be designed to take continuous inputs and produce one real-valued output (this will be explained in more detail in the next section), so the same treatment could be applied to any continuous space model with a positive-definite ground state wave function. 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Method}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Neural Network Quantum State}
+
+We will represent the trial wave function of our system of bosons as a feedforward neural network with one hidden layer. The inputs are the positions of the $N$ one-dimensional bosons and we can choose our network to have any number of $M$ hidden neurons. We will notate the input layer and hidden layer as $\bm{x}\in\mathbb{R}^N$ and $\bm{h}\in\mathbb{R}^M$, respectively. They are fully-connected by weights $W \in \mathbb{R}^{M\times N}$ and are biased by $\bm{b}\in\mathbb{R}^M$, so that
+\begin{equation}
+\bm{h}=W\bm{x}+\bm{b}.
+\end{equation}
+A general wave function is complex, but for a system of bosons, it is positive everywhere. This is convenient, because our network only needs to have one output neuron $u$, instead of two to represent the real and imaginary parts. The output of the network is given by
+ \begin{equation}
+ u = \bm{w}^T \bm{f}(\bm{h}),
+ \end{equation}
+ where $f$ is the activation function, which we will choose to be hyperbolic tangent, and the vector $\bm{w}\in\mathbb{R}^M$ contains the weights connecting the hidden neurons with the single output. We have bolded the activation function in (8) to emphasize that the result is a vector, with the function applied to each element of $\bm{h}$ separately. Finally, we define the trial wave function to be 
+\begin{equation}
+\Psi_T(\bm{x}; \bm{\alpha}) = \exp (u) = \exp(\bm{w}^T \bm{f}(W\bm{x}+\bm{b})),
+\end{equation}
+where we have collected all of the weights and biases of the network ($W, \bm{b}, \bm{w}$) into a single vector $\bm{\alpha} \in \mathbb{R}^{M(N+2)}$. A diagram of the network is shown in Figure 1. 
+\begin{figure}
+\begin{overpic}[scale=0.4]{../figures/FFNN.png}
+\put(14,87){$x_1$}
+\put(14,70){$x_2$}
+\put(11.5,30){$x_{N-1}$}
+\put(14,12){$x_N$}
+\put(48,87){$h_1$}
+\put(48,70){$h_2$}
+\put(45.5,30){$h_{M-1}$}
+\put(47.5,12){$h_M$}
+\put(85,49.5){$u$}
+\end{overpic}
+\caption{Diagram of the feedforward neural network used to represent the trial wave function (9).}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Local Energy}
+
+To compute the energy in (2) efficiently, we will approximate the integral as a simple sum over local energies. First, notice that
+\begin{equation}
+E = \frac{\int \Psi^\dag_T \hat{H} \Psi_T d \bm{x} }{\int \Psi_T^\dag \Psi_T d \bm{x} } = \frac{\int |\Psi_T|^2 \frac{1}{\Psi_T} \hat{H} \Psi_T d \bm{x} }{\int |\Psi_T|^2 d \bm{x} }.
+\end{equation}
+Since $|\Psi_T(\bm{x})|^2$ is the probability of the configuration $\bm{x}$ occurring under our assumptions about the form of the trial wave function, we can interpret the above expression as a weighted average of $\frac{1}{\Psi_T(\bm{x})} \hat{H} \Psi_T(\bm{x})$. Let the local energy be defined by
+\begin{align}
+E_L(\bm{x}) &\equiv \frac{1}{\Psi_T(\bm{x})} \hat{H} \Psi_T(\bm{x}),\\
+&= \sum_{p=1}^N \left[ \sum_{i=1}^M w_i W_{ip}^2 f''(h_i) - \frac{1}{2} \left( \bm{g}^T \bm{W}_p \right)^2 \right]\\
+& \ \ \ + \frac{1}{2} \sum_{p=1}^N x_p^2 + \sum_{p<q} \frac{\nu(\nu-1)}{(x_p-x_q)^2},
+\end{align}
+where $\bm{g}\in \mathbb{R}^M$ is vector with elements 
+\begin{equation}
+g_i = w_i f'(h_i),
+\end{equation}
+and $\bm{W}_p$ is the $p$th column vector of the weight matrix $W$. Then we can approximate $E$ as
+\begin{equation}
+E \approx \frac{1}{n} \sum_{i = 1}^n E_L(\bm{x}_i) \equiv \langle E_L \rangle,
+\end{equation}
+where $n$ denotes the number of sampled configurations and $\bm{x}_i$ denotes the $i$th sample from the probability distribution $|\Psi_T(\bm{x})|^2$. For our model, $E_L(\bm{x})$ is the loss function, $\langle E_L \rangle$ is the cost function, and the goal is to minimize $\langle E_L \rangle$. The variance of the average local energy is
+\begin{equation}
+\sigma_{\langle E_L \rangle}^2 = \langle E_L^2 \rangle - \langle E_L \rangle^2,
+\end{equation}
+which can only equal zero if $\Psi_T = \Psi_0^{exact}$.
+
+To minimize the average local energy $\langle E_L \rangle$, we will need to compute its gradient with respect to the parameters of the neural network $\bm{\alpha}$. It can be shown that
+\begin{equation}
+\nabla_{\bm{\alpha}} \langle E_L \rangle =  2 \Big( \big\langle E_L \nabla_{\bm{\alpha}} \ln \Psi_{T}\big\rangle - \langle E_L \rangle \big\langle  \nabla_{\bm{\alpha}} \ln \Psi_{T} \big\rangle \Big),
+\end{equation}
+due to the hermiticity of the Hamiltonian $\hat{H}$ and the chain rule. We will need (11) and the analytical expression for $\nabla_{\bm{\alpha}} \ln \Psi_{T} (\bm{x};\bm{\alpha})$ to compute (17). The latter can be found by taking derivatives of (9) with respect to the weights and biases $W, \bm{b},$ and $ \bm{w}$, separately. The results are given by
+\begin{align}
+\nabla_W \ln \Psi_T &= \bm{g} \bm{x}^T,\\
+\nabla_{\bm{b}} \ln \Psi_T &= \bm{g},\\
+\nabla_{\bm{w}} \ln \Psi_T &= \bm{f}(\vec{\bm{h}}).
+\end{align}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{MCMC Sampling}
+
+We will use Markov chain Monte Carlo (MCMC) sampling to pull particle configurations from the probability distribution $|\Psi_T(\bm{x})|^2$. The general approach is as follows:
+\begin{enumerate}
+\item Set the initial positions $\bm{x}_1$ of all $N$ particles to random values from a Gaussian distribution.
+\item For each iteration $i$, randomly pick one of the $N$ particles and move it to a different position. Denote this trial configuration as $\bm{x}_T$.
+\item Calculate the acceptance ratio $A(\bm{x}_T, \bm{x}_i)$ for the trial position $\bm{x}_T$ given our current position $\bm{x}_i$. 
+\item Generate a random number $u$ between 0 and 1 from a uniform distribution. If $u \leq A(\bm{x}_T, \bm{x}_i)$, accept the move by setting $\bm{x}_{i+1}=\bm{x}_T$. Otherwise, reject the move by setting $\bm{x}_{i+1}=\bm{x}_i$. 
+\item Repeat steps 2-4 until $n$ samples have been obtained. 
+\end{enumerate}
+
+Since the positions of the particles are initially pulled from a Gaussian distribution, we should allow our sam-
+
+\noindent pler to reach equilibrium before performing any calculations with the samples. We can do this by simply ignoring the first 10\% of samples. 
+
+There are many ways of implementing steps 2 and 3. In the brute force approach, we can define a new parameter $s_{max}$ that determines the maximum step a particle can move in either direction. More explicitly, if we want to move particle $p$ in the $i$th iteration, then the trial position of particle $p$ is given by
+\begin{equation}
+x_T^{(p)} = x_i^{(p)} + s,
+\end{equation}
+where $s$ is a uniform random number between $-s_{max}$ and $s_{max}$. Then the acceptance ratio is the ratio of probabilities given by the trial wave function:
+\begin{equation}
+A(\bm{x}_T, \bm{x}_i) = \frac{|\Psi_T(\bm{x}_T)|^2}{|\Psi_T(\bm{x}_i)|^2}.
+\end{equation}
+
+The brute force method is not ideal because it kicks particles to a different location completely randomly. A better approach would be to use what we know about $\Psi_T$ to kick the particle into higher probability regions more often, maximizing the number of accepted moves. We can do this by using importance sampling, treating the particles as diffusive random walkers. The so-called quantum force on the $p$th particle is given by
+\begin{equation}
+F_p(\bm{x}) = 2 \frac{1}{\Psi_T} \frac{\partial}{\partial x_k} \Psi_T = 2 \bm{g}^T \bm{W}_k.
+\end{equation}
+Then the Langevin and Fokker-Planck equations give a new trial position for the $p$th particle in the $i$th iteration according to
+\begin{equation}
+x_T^{(p)} = x_i^{(p)} + d \Delta t F_p(\bm{x}_i)+\xi \sqrt{\Delta t},
+\end{equation}
+where $d = 1/2$ is the diffusion constant, $\xi$ is drawn from a normal distribution, and $\Delta t \in [0.001, 0.01]$ is a time step parameter. The transition probability is given by the Green's function
+\begin{equation}
+G(y,x) \propto \exp \left( - \frac{(y-x-d \Delta t F(x))^2}{4d \Delta t} \right),
+\end{equation}
+so that the acceptance ratio for moving the $p$th particle is
+\begin{align}
+&A(\bm{x}_T, \bm{x}_i) = \frac{G(x_i^{(p)},x_T^{(p)})|\Psi_T(\bm{x}_T)|^2}{G(x_T^{(p)},x_i^{(p)})|\Psi_T(\bm{x}_i)|^2},\\
+&= \exp \left( \frac{1}{2}(x_i^{(p)}-x_T^{(p)}) \left(F_p(x_T^{(p)}) + F_p(x_i^{(p)}) \right) \right. \\
+&\ \ \ \left. + \frac{1}{4} d \Delta t \left( F_p(x_i^{(p)})^2-F_p(x_T^{(p)})^2 \right) \right)  \frac{|\Psi_T(\bm{x}_T)|^2}{|\Psi_T(\bm{x}_i)|^2}.
+\end{align}
+
+Notice that in both the brute force method and the importance sampling method, it is possible for the acceptance ratio to be larger than 1. When this happens, we say that the trial configuration $\bm{x}_T$ is more likely than the current position $\bm{x}_i$, so we should always accept the sample. However, this does not mean that we should always reject the sample when the trial configuration is less likely, otherwise the sampler would always converge to the most likely configuration and become static. Instead, we allow for the less likely configurations to be accepted with some corresponding probability. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Stochastic Gradient Descent}
+
+We will update the parameters of the neural network using stochastic gradient descent. In our case, stochasticity is introduced by replacing the true gradient of the energy integral with the gradient of the average local energy. This estimation is noisy, but much more computationally efficient. In contrast to stochastic gradient descent in the usual machine learning framework, in which only one data point is used to estimate the gradient, we will calculate the gradient (17) using the $n$ samples of particle configurations at each iteration of the optimization process. Any configuration of particles is technically valid, although it may have an arbitrarily small chance of occurring. So our estimation could be viewed as taking a mini-batch of size $n$ of the infinite number of the possible configurations.
+
+Sometimes a fixed learning rate $\eta$ can be used in gradient descent methods without much trouble. However, our estimations of the gradient are already noisy and have the potential to kick us out of the minimum we are trying to find. So it is important to use a learning rate that decreases towards zero as the optimization process progresses. For example, we can define the learning rate for the $j$th iteration of the process as
+\begin{equation}
+\eta_j = j^{-a},
+\end{equation}
+for some positive constant $a$. There is a lot of freedom here for the exact form of $\eta_j$, so we plan to experiment to find an option that converges quickly and reliably. 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Algorithm}
+
+Many of the elements of a variational Monte Carlo calculation overlap with the elements of a typical machine learning algorithm. They both assume a set of random parameters, measure how wrong the result is based on the assumption, and have some way of changing the parameters in order to get a better result. The general outline of our hybrid algorithm is as follows:
+\begin{enumerate}
+\item Initialize the weights and biases of the neural network quantum state. 
+\item Sample $n$ particle configurations from $|\Psi_T|^2$.
+\item Estimate the local energy $\langle E_L \rangle$ and its gradient with respect to the network parameters $\nabla_{\bm{\alpha}} \langle E_L \rangle$ using the $n$ samples.
+\item Update the network parameters $\bm{\alpha}$ using stochastic gradient descent. 
+\item Repeat steps 2-4 until the magnitude of the gradient $\| \nabla_{\bm{\alpha}} \langle E_L \rangle \| $ is below some tolerance $\epsilon$. 
+\end{enumerate}
+
+
+We do not want to allocate a large amount of memory to store all $n$ particle configurations, so we will implement steps 2 and 3 concurrently. As each sample in the Markov chain is generated, each of their contributions to the average local energy and its gradient will be added to a running sum. These samples are used to update the parameters of the neural network, while the neural network is used to generate more samples. This feedback loop makes this a reinforcement learning problem. 
+
+Preliminary results indicate that the training ability of the network is very sensitive to the initial weights and biases. For some problems, it is sufficient to set these initial parameters to small random values near zero, but in our case, the gradient either blows up or vanishes. We will try to mitigate this issue by first training our network on the non-interacting case, the simple one-dimensional harmonic oscillator, for which the solution (5) is well-known. The trained network after this initial supervised learning of the weights will then be used as the initial state of our network for the reinforcement learning problem. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Implementation}
+
+The method described in Section III will be implemented using five main classes corresponding to the five subsections A-E. The first is the class \texttt{FeedForwardNeuralNetwork} in the module \texttt{wavefunction}. An object from this class creates the network used to represent the trial wave function. It stores the number of inputs (or particles) $N$, the number of hidden nodes $M$, the weights and biases $\bm{\alpha} = (W, \bm{b}, \bm{w})$, and the current input $\bm{x}$. It includes functionalities to calculate the wave function (9), the local kinetic energy (12), the quantum force (23), and the gradient of $\ln \Psi_T$ with respect to the network parameters (18)-(20).
+
+A \texttt{FeedForwardNeuralNetwork} object and the interaction parameter $\nu$ are used as inputs for the \texttt{CalogeroSutherland} class in the \texttt{hamiltonian} module. A \texttt{CalogeroSutherland} object can calculate the local energy (11), the exact ground state energy (4), and the exact ground state wave function (3). A \texttt{FeedForwardNeuralNetwork} object is also used to instantiate a \texttt{StochasticGradientDescent} object from the \texttt{optimizer} module. This object updates the parameters of the trial wave function given the gradient. 
+
+The \texttt{sampler} module has two classes: \texttt{BruteForce} and \texttt{ImportanceSampling}. They both take a \texttt{CalogeroSutherland} object and a sampling parameter ($s_{max}$ or $\Delta t$) as inputs. In addition, they include methods for generating a new sample, calculating the appropriate acceptance ratio, and accepting trial samples. 
+
+Finally, the variational Monte Carlo method is implemented in the wrapper class \texttt{VariationalMonteCarlo} from the \texttt{vmc} module. It explicitly takes objects from the \texttt{hamiltonian}, \texttt{optimizer}, and \texttt{sampler} modules and implicitly takes an object from the \texttt{wavefunction} module as inputs. It computes the averages for the estimation of the local energy (11) and its gradient (17) and calls the optimizer to update the network parameters accordingly. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Data}
+
+\subsection{Visualization}
+
+\begin{figure*}
+\begin{overpic}[scale=0.6]{../figures/{exactdistribution_N3_nu1.0_samples1000000}.pdf}
+\end{overpic}
+\caption{Kernel density plot of 1000000 sampled positions of 3 particles from the exact distribution $|\Psi_0^{exact}|^2$ using the brute force sampling method. }
+\end{figure*}
+\begin{figure*}
+\begin{overpic}[scale=0.6]{../figures/{exactdistribution_N5_nu1.0_samples1000000}.pdf}
+\end{overpic}
+\caption{Kernel density plot of 1000000 sampled positions of 5 particles using the brute force sampling method.}
+\end{figure*}
+\begin{figure*}
+\begin{overpic}[scale=0.6]{../figures/{exactdistribution_N10_nu1.0_samples5000000}.pdf}
+\end{overpic}
+\caption{Kernel density plot of 5000000 sampled positions of 10 particles using the brute force sampling method.}
+\end{figure*}
+
+Figures 2-4 show representations of the probability distributions given by the exact ground state wave function (3). The figures were generated by making a kernel density plot of all of the sampled positions of all the particles using the brute force sampling method. For an interaction parameter of $\nu = 1$, there are clear peaks corresponding to the most likely positions of the $N=3,5,10$ particles. Of those peaks, the ones in the center are more likely than the others due to the harmonic oscillator potential. A kernel density plot was chosen because the wave function is easier to visualize with an arbitrary number of particles. The wave function of a system of bosons is also symmetric under particle exchange, so it makes sense to plot all the positions of the particles on the same axis. Similar plots will be made to show how the trial wave function converges to the exact ground state using the importance sampling method. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Preprocessing}
+
+The ground state wave function of a system of bosons must be symmetric under particle exchange, so we need to feed the data into the neural network in a form it can more easily detect and enforce the symmetry. For example, the configurations $\bm{x}=(-1,0,1)$ and $\bm{x}=(0,1,-1)$ are equivalent for three bosons because they are indistinguishable particles. To ensure that these permutations of positions are treated the same, we will sort the sampled positions in ascending order before using them as input data. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\section{Training}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Parameters}
+It may be interesting to see how the network performs for different values of the interaction parameter $\nu$. For our purposes, we will focus on the range $0\leq\nu\leq1$, with the end points corresponding to the one-dimensional harmonic oscillator problem. Notice that for $\nu=1$ there is no interaction in the Hamiltonian but Figures 2-4 show some evidence of an interaction. More research will be required to explain this phenomena, but we are currently under the impression that $\nu=1$ corresponds to changing the particles from bosons to fermions. 
+
+If the training of the network proves to be difficult, we may need to introduce the interaction potential more gradually. Assuming the changes in the network parameters are small for small changes in $\nu$, we can first train the network for the non-interacting case then slowly increase $\nu$ to our desired value, optimizing the parameters as we go. 
+
+There are several additional hyperparameters we can tune to improve the performance of our algorithm. For example, we can explore how many hidden neurons $M$ are required to well approximate the ground state, the learning rate $\eta_j$ for stochastic gradient descent, and the parameters $s_{max}$ and $\Delta t$ used for sampling. We can also determine the best tolerance $\epsilon$ for stopping the optimization process, and the best number of samples $n$ to accurately and efficiently approximate the energy and its gradient.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Learning Curve}
+
+For the supervised training of the neural network in the non-interacting case, we can compare $\Psi_T$ with $\Psi_0^{non\text{-}int}$ by calculating the overlap integral
+\begin{equation}
+L \equiv \frac{\left[ \int  \Psi_T(\bm{x}) \Psi_0^{non\text{-}int}(\bm{x}) d \bm{x} \right]^2}{\int |\Psi_T(\bm{x})|^2 d \bm{x} \int |\Psi_0^{non\text{-}int}(\bm{x})|^2 d \bm{x} }.
+\end{equation}
+We can estimate this integral using Monte Carlo
+\begin{equation}
+L \approx \frac{\langle \Psi_0^{non\text{-}int} /\Psi_T \rangle^2}{\langle  \left( \Psi_0^{non\text{-}int} /\Psi_T \right)^2 \rangle},
+\end{equation}
+and train our network until $L$ is sufficiently close to its maximum value of 1. We can do the same type of treatment for the reinforcement learning portion of the problem by calculating the overlap integral of $\Psi_T$ and $\Psi_0^{exact}$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+ \section{Poster}
+ 
+Since this neural network will be trained in an unconventional way, I plan on writing my code from scratch in Python. My poster will be structured similar to this proposal but contain much more concise information. It will include introduction, theory, method, implementation, data, and results sections. It will also include a visual representation of how the neural network converges to the exact solution. I intend on describing the structure of my code for the calculation in detail and displaying the relevant math in LaTeX. I will use Keynote to make the poster itself, and print it at the MSU Main Library. For maximum efficiency, the training will be performed on the HPCC cluster at ICER. The poster will be held onto the wall by tape or magnets. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Timeline}
+\begin{itemize}
+\item November 3 - Implement the supervised training of the initial weights and calculation of the overlap integrals. 
+\item November 10 - Implement the sorting of positions and perform parameter tuning.
+\item November 17 - Create a \texttt{Plotter} class that can run the hybrid algorithm and generate various plots. 
+\item November 24 - Start poster and generate plots to show the evolution of the trial wave function. 
+\item December 1 - Finalize and print poster.
+\end{itemize}
+
+\end{document}

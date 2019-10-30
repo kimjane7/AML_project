@@ -12,6 +12,7 @@ class VariationalMonteCarlo:
         self.num_samples = num_samples
         self.tolerance = tolerance
         self.filename = filename
+        
     
     def minimize_energy(self):
         """optimizes of wave function parameters
@@ -20,24 +21,67 @@ class VariationalMonteCarlo:
         optimize = True
         cycles = 0
         
+        print('{:<10s}{:<20s}{:<20s}{:<20s}{:<20s}'.format('cycles', 'avg EL', 'var EL', '||gradient||', 'ratio accepted samples'))
+        
         while optimize:
             
+            self.estimate_gradient()
+            self.optimizer.update_params(self.gradient)
             cycles += 1
-            num_accepted = 0
-            num_effective_samples = 0
             
-            self.EL_mean = 0.0
-            self.EL2_mean = 0.0
-            self.gradient_logpsi_mean = np.zeros(self.num_params)
-            self.EL_gradient_logpsi_mean = np.zeros(self.num_params)
+            print('{:<10d}{:<20.5f}{:<20.5f}{:<20.5f}{:<20.15}'.format(cycles, self.avg_EL, self.var_EL, np.linalg.norm(self.gradient), self.ratio_accepted))
             
-            
-            
+            if np.linalg.norm(gradient) < self.tolerance:
+                optimize = False
             
             
         
         
     def estimate_gradient(self):
+        """estimate gradient of average local energy
+           with respect to wave function parameters"""
+
+        num_accepted = 0
+        self.avg_EL = 0.0
+        avg_EL2 = 0.0
+        avg_gradient_logpsi = np.zeros(self.num_params)
+        avg_EL_gradient_logpsi = np.zeros(self.num_params)
         
-        return grad
+        # let sampler to reach equilibrium
+        fraction_skip = 0.1
+        num_skip_samples = int(fraction_skip*self.num_samples)
+        num_effective_samples = self.num_samples-num_skip_samples
+        for sample in range(num_skip_samples):
+            accepted = self.sampler.sample()
+            
+        # take samples to estimate gradient
+        for sample in range(num_effective_samples):
+        
+            # count accepted samples
+            accepted = self.sampler.sample()
+            if accepted:
+                num_accepted += 1
+            
+            # calculate local energy and gradient of wave function
+            EL = self.hamiltonian.calc_local_energy(self.wavefunction.x)
+            gradient_logpsi = self.wavefunction.calc_gradient_logpsi(self.wavefunction.x)
+            
+            # add up values for expectation values
+            self.avg_EL += EL
+            avg_EL2 += EL**2
+            avg_gradient_logpsi += gradient_logpsi
+            avg_EL_gradient_logpsi += EL*gradient_logpsi
+        
+        # calculate expectation values
+        self.avg_EL /= num_effective_samples
+        avg_EL2 /= num_effective_samples
+        avg_gradient_logpsi /= num_effective_samples
+        avg_EL_gradient_logpsi /= num_effective_samples
+        
+        # calculate variance and ratio accepted
+        self.var_EL = avg_EL2-self.avg_EL**2
+        self.ratio_accepted = float(num_accepted)/num_effective_samples
+        
+        # calculate gradient
+        self.gradient = 2.0*(avg_EL_gradient_logpsi-self.avg_EL*avg_gradient_logpsi)
     

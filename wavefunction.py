@@ -5,13 +5,14 @@ class FeedForwardNeuralNetwork:
 
     def __init__(self, num_visible, num_hidden):
         """constructor"""
-        self.N = num_visible                                    # number of particles
-        self.M = num_hidden                                     # number of hidden units
-        self.x = np.random.normal(0.0, 1.0, self.N)             # positions of particles
-        self.b = np.random.normal(0.0, 0.01, self.M)            # bias
-        self.w = np.random.normal(0.0, 0.01, self.M)            # weights for hidden to output
-        self.W = np.random.normal(0.0, 0.01, (self.M,self.N))   # weights for visible to hidden
-        self.alpha = self.vectorize(self.W, self.w, self.b)     # all parameters
+        self.N = num_visible                                     # number of particles
+        self.M = num_hidden                                      # number of hidden units
+        self.x = np.random.normal(0.0, 0.1, self.N)              # positions of particles
+        self.b = np.random.normal(0.0, 0.01, self.M)             # bias
+        self.w = np.random.normal(0.0, 0.01, self.M)             # weights for hidden to output
+        self.W = np.random.normal(0.0, 0.01, (self.M,self.N))    # weights for visible to hidden
+        self.alpha = self.vectorize(self.W, self.w, self.b)      # all parameters
+        
         
         
     def calc_psi(self, x):
@@ -33,8 +34,8 @@ class FeedForwardNeuralNetwork:
             for i in range(self.M):
                 KL += self.w[i]*self.W[i,p]**2*fff[i]
                 foo += self.w[i]*self.W[i,p]*ff[i]
-            KL -=0.5*foo**2
-        return KL
+            KL += foo**2
+        return -0.5*KL
     
 
     def calc_qforce(self, x, p):
@@ -53,9 +54,9 @@ class FeedForwardNeuralNetwork:
         h = np.dot(self.W,x) + self.b
         f = self.calc_f(h)
         ff = self.calc_ff(h)
-        g = self.w*ff
-        grad = self.vectorize(np.outer(g,x), g, f)
-        return grad
+        g = np.multiply(self.w,ff)
+        gradient = self.vectorize(np.outer(g,x), g, f)
+        return gradient
              
             
     def calc_f(self, z):
@@ -73,14 +74,15 @@ class FeedForwardNeuralNetwork:
         return 2.0*np.tanh(z)*(1.0-(np.tanh(z))**2)
         
         
-    def vectorize(self, W, w, b):
+    def vectorize(self, W, b, w):
         """return 1d array from matrix and vectors"""
-        alpha = np.concatenate((np.ravel(W), w, b))
+        alpha = np.concatenate((np.ravel(W), b, w))
         return alpha
+        
         
     def separate(self, alpha):
         """return matrix and vectors from 1d array"""
         W = alpha[:self.M*self.N].reshape(self.M,self.N)
-        w = alpha[self.M*self.N:self.M*self.N+self.M]
-        b = alpha[self.M*self.N+self.M:]
-        return W, w, b
+        b = alpha[self.M*self.N:self.M*self.N+self.M]
+        w = alpha[-self.M:]
+        return W, b, w
