@@ -1,9 +1,6 @@
 \documentclass[prb,aps,twocolumn,showpacs,10pt]{revtex4-1}
 \pdfoutput=1
-\usepackage{dcolumn}% Align table columns on decimal point
-\usepackage{bm}% bold math
-
-%\usepackage{anysize}
+\usepackage{dcolumn}
 \usepackage[colorlinks,hyperindex, urlcolor=blue, linkcolor=blue,citecolor=black, linkbordercolor={.7 .8 .8}]{hyperref}
 \usepackage{graphicx}
 %\usepackage{tabularx}
@@ -15,6 +12,7 @@
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{nicefrac}
+\usepackage{bm}
 \usetikzlibrary{arrows,shapes,positioning}
 \newenvironment{psmallmatrix}
   {\left[\begin{matrix}}
@@ -27,23 +25,8 @@
 \definecolor{gray}{rgb}{0.5,0.5,0.5}
 \definecolor{mauve}{rgb}{0.58,0,0.82}
 \usepackage{geometry}
-\geometry{margin=0.8in}
-\lstset{frame=tb,
-  language=Java,
-  aboveskip=3mm,
-  belowskip=3mm,
-  showstringspaces=false,
-  columns=flexible,
-  basicstyle={\small\ttfamily},
-  numbers=none,
-  numberstyle=\tiny\color{gray},
-  keywordstyle=\color{blue},
-  commentstyle=\color{dkgreen},
-  stringstyle=\color{mauve},
-  breaklines=true,
-  breakatwhitespace=true,
-  tabsize=3
-}
+\geometry{margin=0.9in}
+
 \usepackage[percent]{overpic}
 
 \begin{document}
@@ -53,7 +36,7 @@
 \date{\today}
 \begin{abstract}
 \vspace*{3mm}
-This project aims to solve for the ground state energy of a system of one-dimensional bosons using the variational Monte Carlo method enhanced by machine learning. The trial wave function is replaced by a feedforward neural network of one hidden layer. The natural cost function for a variational problem is the energy of the system, which we will compute stochastically and minimize with respect to the weights and biases of the network. The particular model of choice is exactly solvable, so the accuracy of the final result for the ground state energy and wave function can be measured quantitatively.
+This project aims to solve for the ground state energy of interacting bosons trapped in a one-dimensional harmonic oscillator. The trial wave function in a variational Monte Carlo calculation is replaced by a feedforward neural network with one hidden layer. The natural cost function is the energy of the system, which we will compute stochastically and minimize with respect to the weights and biases of the network. The inputs of the network are the positions of the bosons, which will be sampled using the output of the network, making this a reinforcement learning problem. The particular model of choice is exactly solvable, so the accuracy of the final result for the ground state energy and wave function can be measured quantitatively.
 \end{abstract}
 
 \maketitle
@@ -154,9 +137,6 @@ where we have collected all of the weights and biases of the network ($W, \bm{b}
 \end{overpic}
 \caption{Diagram of the feedforward neural network used to represent the trial wave function (9).}
 \end{figure}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \subsection{Local Energy}
 
 To compute the energy in (2) efficiently, we will approximate the integral as a simple sum over local energies. First, notice that
@@ -284,8 +264,7 @@ A \texttt{FeedForwardNeuralNetwork} object and the interaction parameter $\nu$ a
 
 The \texttt{sampler} module has two classes: \texttt{BruteForce} and \texttt{ImportanceSampling}. They both take a \texttt{CalogeroSutherland} object and a sampling parameter ($s_{max}$ or $\Delta t$) as inputs. In addition, they include methods for generating a new sample, calculating the appropriate acceptance ratio, and accepting trial samples. 
 
-Finally, the variational Monte Carlo method is implemented in the wrapper class \texttt{VariationalMonteCarlo} from the \texttt{vmc} module. It explicitly takes objects from the \texttt{hamiltonian}, \texttt{optimizer}, and \texttt{sampler} modules and implicitly takes an object from the \texttt{wavefunction} module as inputs. It computes the averages for the estimation of the local energy (11) and its gradient (17) and calls the optimizer to update the network parameters accordingly. 
-
+Finally, the variational Monte Carlo method is implemented in the wrapper class \texttt{VariationalMonteCarlo} from the \texttt{vmc} module. It explicitly takes objects from the \texttt{hamiltonian}, \texttt{optimizer}, and \texttt{sampler} modules and implicitly takes an object from the \texttt{wavefunction} module as inputs. It computes the averages for the estimation of the local energy (11) and its gradient (17) and calls the optimizer to update the network parameters accordingly.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -293,22 +272,6 @@ Finally, the variational Monte Carlo method is implemented in the wrapper class 
 \section{Data}
 
 \subsection{Visualization}
-
-\begin{figure*}
-\begin{overpic}[scale=0.6]{../figures/{exactdistribution_N3_nu1.0_samples1000000}.pdf}
-\end{overpic}
-\caption{Kernel density plot of 1000000 sampled positions of 3 particles from the exact distribution $|\Psi_0^{exact}|^2$ using the brute force sampling method. }
-\end{figure*}
-\begin{figure*}
-\begin{overpic}[scale=0.6]{../figures/{exactdistribution_N5_nu1.0_samples1000000}.pdf}
-\end{overpic}
-\caption{Kernel density plot of 1000000 sampled positions of 5 particles using the brute force sampling method.}
-\end{figure*}
-\begin{figure*}
-\begin{overpic}[scale=0.6]{../figures/{exactdistribution_N10_nu1.0_samples5000000}.pdf}
-\end{overpic}
-\caption{Kernel density plot of 5000000 sampled positions of 10 particles using the brute force sampling method.}
-\end{figure*}
 
 Figures 2-4 show representations of the probability distributions given by the exact ground state wave function (3). The figures were generated by making a kernel density plot of all of the sampled positions of all the particles using the brute force sampling method. For an interaction parameter of $\nu = 1$, there are clear peaks corresponding to the most likely positions of the $N=3,5,10$ particles. Of those peaks, the ones in the center are more likely than the others due to the harmonic oscillator potential. A kernel density plot was chosen because the wave function is easier to visualize with an arbitrary number of particles. The wave function of a system of bosons is also symmetric under particle exchange, so it makes sense to plot all the positions of the particles on the same axis. Similar plots will be made to show how the trial wave function converges to the exact ground state using the importance sampling method. 
 
@@ -328,11 +291,11 @@ The ground state wave function of a system of bosons must be symmetric under par
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{Parameters}
-It may be interesting to see how the network performs for different values of the interaction parameter $\nu$. For our purposes, we will focus on the range $0\leq\nu\leq1$, with the end points corresponding to the one-dimensional harmonic oscillator problem. Notice that for $\nu=1$ there is no interaction in the Hamiltonian but Figures 2-4 show some evidence of an interaction. More research will be required to explain this phenomena, but we are currently under the impression that $\nu=1$ corresponds to changing the particles from bosons to fermions. 
+It may be interesting to see how the network performs for different values of the interaction parameter $\nu$. We will focus on the range $0 \leq \nu \leq 2$. Notice that for the special value $\nu=1$ there is no interaction in the Hamiltonian but the exact wave function (3) and Figures 2-4 show some evidence of an interaction. More research will be required to explain this phenomena, but it seems that this value of $\nu$ corresponds to the treatment of bosons as hard spheres, i.e. the interaction potential is 0 when the distance between particles is less the diameter $d$ of the spheres and infinite when the distance is greater than $d$.  
 
-If the training of the network proves to be difficult, we may need to introduce the interaction potential more gradually. Assuming the changes in the network parameters are small for small changes in $\nu$, we can first train the network for the non-interacting case then slowly increase $\nu$ to our desired value, optimizing the parameters as we go. 
+If the training of the network proves to be difficult, we may need to introduce the interaction potential more gradually because of its singularity. Assuming the changes in the network parameters are small for small changes in $\nu$, we can first train the network for the non-interacting case then slowly increase $\nu$ to our desired value, optimizing the parameters as we go. 
 
-There are several additional hyperparameters we can tune to improve the performance of our algorithm. For example, we can explore how many hidden neurons $M$ are required to well approximate the ground state, the learning rate $\eta_j$ for stochastic gradient descent, and the parameters $s_{max}$ and $\Delta t$ used for sampling. We can also determine the best tolerance $\epsilon$ for stopping the optimization process, and the best number of samples $n$ to accurately and efficiently approximate the energy and its gradient.
+There are several additional hyperparameters we can tune to improve the performance of our algorithm. For example, we can vary the number of hidden neurons $M$, the learning rate $\eta_j$ for stochastic gradient descent, and the parameters $s_{max}$ and $\Delta t$ used for sampling. We can also determine the best tolerance $\epsilon$ for stopping the optimization process, the rate at which we gradually introduce the interaction potential, and the best number of samples $n$ to accurately and efficiently approximate the energy and its gradient.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -346,7 +309,8 @@ We can estimate this integral using Monte Carlo
 \begin{equation}
 L \approx \frac{\langle \Psi_0^{non\text{-}int} /\Psi_T \rangle^2}{\langle  \left( \Psi_0^{non\text{-}int} /\Psi_T \right)^2 \rangle},
 \end{equation}
-and train our network until $L$ is sufficiently close to its maximum value of 1. We can do the same type of treatment for the reinforcement learning portion of the problem by calculating the overlap integral of $\Psi_T$ and $\Psi_0^{exact}$.
+and train our network until $L$ is sufficiently close to its maximum value of 1. We can do the same type of treatment for the learning curve of the reinforcement learning portion by calculating the overlap integral of $\Psi_T$ and $\Psi_0^{exact}$.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -354,7 +318,7 @@ and train our network until $L$ is sufficiently close to its maximum value of 1.
 
  \section{Poster}
  
-Since this neural network will be trained in an unconventional way, I plan on writing my code from scratch in Python. My poster will be structured similar to this proposal but contain much more concise information. It will include introduction, theory, method, implementation, data, and results sections. It will also include a visual representation of how the neural network converges to the exact solution. I intend on describing the structure of my code for the calculation in detail and displaying the relevant math in LaTeX. I will use Keynote to make the poster itself, and print it at the MSU Main Library. For maximum efficiency, the training will be performed on the HPCC cluster at ICER. The poster will be held onto the wall by tape or magnets. 
+Since this neural network will be trained in an unconventional way, I plan on writing my code from scratch in Python. My poster will be structured similar to this proposal but each section will contain much more concise information. It will include introduction, theory, method, implementation, data, and results sections. It will also include a visual representation of how the neural network converges to the exact solution. I intend on describing the structure of my code for the calculation in detail and displaying the relevant math in LaTeX. I will use Keynote to make the poster itself, and print it at the MSU Main Library. For maximum efficiency, the training will be performed on the HPCC cluster at ICER. The poster will be held onto the wall by tape or magnets. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -362,11 +326,28 @@ Since this neural network will be trained in an unconventional way, I plan on wr
 
 \section{Timeline}
 \begin{itemize}
-\item November 3 - Implement the supervised training of the initial weights and calculation of the overlap integrals. 
-\item November 10 - Implement the sorting of positions and perform parameter tuning.
-\item November 17 - Create a \texttt{Plotter} class that can run the hybrid algorithm and generate various plots. 
-\item November 24 - Start poster and generate plots to show the evolution of the trial wave function. 
-\item December 1 - Finalize and print poster.
+\item \textit{November 3} - Implement the supervised training of the initial weights and calculation of the overlap integrals. 
+\item \textit{November 10} - Implement the sorting of positions and perform parameter tuning.\\
+\item \textit{November 17} - Create a \texttt{Plotter} class that can run the hybrid algorithm and generate various plots. 
+\item \textit{November 24} - Start poster and generate plots to show the evolution of the trial wave function. 
+\item \textit{December 1} - Finalize and print poster.
+
 \end{itemize}
+\begin{figure*}
+\begin{overpic}[scale=0.6]{../figures/{exactdistribution_N3_nu1.0_samples1000000}.pdf}
+\end{overpic}
+\caption{Kernel density plot of 1000000 sampled positions of 3 particles from the exact distribution $|\Psi_0^{exact}|^2$ using the brute force sampling method. }
+\end{figure*}
+\begin{figure*}
+\begin{overpic}[scale=0.6]{../figures/{exactdistribution_N5_nu1.0_samples1000000}.pdf}
+\end{overpic}
+\caption{Kernel density plot of 1000000 sampled positions of 5 particles using the brute force sampling method.}
+\end{figure*}
+\begin{figure*}
+\begin{overpic}[scale=0.6]{../figures/{exactdistribution_N10_nu1.0_samples5000000}.pdf}
+\end{overpic}
+\caption{Kernel density plot of 5000000 sampled positions of 10 particles using the brute force sampling method.}
+\end{figure*}
+
 
 \end{document}

@@ -8,12 +8,7 @@ class Calogero:
         """constructor"""
         self.wavefunction = wavefunction        # trial wave function
         self.nu = nu                            # interaction parameter
-        self.train_nonint_case()
         
-    def self.train_nonint_case(self):
-        """supervised training of weights and biases of wave function
-           in the non-interacting case (plain 1D harmonic oscillator)"""
-
     
     def calc_local_energy(self, x):
         """local energy"""

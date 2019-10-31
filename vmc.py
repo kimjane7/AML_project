@@ -17,10 +17,38 @@ class VariationalMonteCarlo:
     def minimize_energy(self):
         """optimizes of wave function parameters
            and calculates ground state energy"""
+           
+        # get weights and biases for non-interacting case
+        print('Training for the non-interacting case...')
+        self.train_nonint_case()
+        print('Done.')
+        
+        # train wave function for interacting case
+        print('Training for the interacting case of nu = ', self.hamiltonian.nu, '...')
+        self.train_int_case()
+        print('Done.')
+        
+            
+    def train_nonint_case(self):
+        """supervised training of initial weights and biases of wave function using known
+           wave function for the non-interacting case of particles in 1D harmonic oscillator"""
+           
+        optimize = True
+        cycles = 0
+        print('{:<10s}{:<20s}{:<20s}{:<20s}{:<20s}'.format('cycles', 'avg EL', 'var EL', '||gradient||', 'ratio accepted samples'))
+        
+        while optimize:
+        
+            self.
+           
+    def train_int_case(self):
+        """reinforcement learning of ground state wave function in interacting case"""
+        
+        
+        CALC OVERLAP DURING ITERATIONS - FIDELITY?
         
         optimize = True
         cycles = 0
-        
         print('{:<10s}{:<20s}{:<20s}{:<20s}{:<20s}'.format('cycles', 'avg EL', 'var EL', '||gradient||', 'ratio accepted samples'))
         
         while optimize:
@@ -33,8 +61,6 @@ class VariationalMonteCarlo:
             
             if np.linalg.norm(gradient) < self.tolerance:
                 optimize = False
-            
-            
         
         
     def estimate_gradient(self):
