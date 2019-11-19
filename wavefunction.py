@@ -7,13 +7,18 @@ class FeedForwardNeuralNetwork:
         """constructor"""
         self.N = num_visible                                     # number of particles
         self.M = num_hidden                                      # number of hidden units
-        self.x = np.random.normal(0.0, 0.1, self.N)              # positions of particles
-        self.b = np.random.normal(0.0, 0.01, self.M)             # bias
-        self.w = np.random.normal(0.0, 0.01, self.M)             # weights for hidden to output
-        self.W = np.random.normal(0.0, 0.01, (self.M,self.N))    # weights for visible to hidden
+        self.x = np.random.normal(0.0, 0.01, self.N)             # positions of particles
+        self.b = np.random.normal(0.0, 0.1, self.M)              # bias
+        self.w = np.random.normal(0.0, 0.1, self.M)              # weights for hidden to output
+        self.W = np.random.normal(0.0, 0.1, (self.M,self.N))     # weights for visible to hidden
         self.alpha = self.vectorize(self.W, self.w, self.b)      # all parameters
         
-        
+    def supervised_train(self, X, y):
+        """return mean square error for inputs X and targets y"""
+        n = X.shape[0]                                           # number of data samples
+            
+            
+    
         
     def calc_psi(self, x):
         """wave function"""
@@ -66,7 +71,7 @@ class FeedForwardNeuralNetwork:
     
     def calc_ff(self, z):
         """first derivative of activation function"""
-        return 1.0-(np.tanh(z))**2
+        return 1.0-((np.tanh(z))**2)
     
     
     def calc_fff(self, z):
@@ -81,8 +86,8 @@ class FeedForwardNeuralNetwork:
         
         
     def separate(self, alpha):
-        """return matrix and vectors from 1d array"""
-        W = alpha[:self.M*self.N].reshape(self.M,self.N)
-        b = alpha[self.M*self.N:self.M*self.N+self.M]
-        w = alpha[-self.M:]
-        return W, b, w
+        """split parameter vector into weights and biases"""
+        self.W = alpha[:self.M*self.N].reshape(self.M,self.N)
+        self.b = alpha[self.M*self.N:self.M*self.N+self.M]
+        self.w = alpha[-self.M:]
+    

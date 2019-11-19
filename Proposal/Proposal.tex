@@ -202,7 +202,7 @@ A(\bm{x}_T, \bm{x}_i) = \frac{|\Psi_T(\bm{x}_T)|^2}{|\Psi_T(\bm{x}_i)|^2}.
 
 The brute force method is not ideal because it kicks particles to a different location completely randomly. A better approach would be to use what we know about $\Psi_T$ to kick the particle into higher probability regions more often, maximizing the number of accepted moves. We can do this by using importance sampling, treating the particles as diffusive random walkers. The so-called quantum force on the $p$th particle is given by
 \begin{equation}
-F_p(\bm{x}) = 2 \frac{1}{\Psi_T} \frac{\partial}{\partial x_k} \Psi_T = 2 \bm{g}^T \bm{W}_k.
+F_p(\bm{x}) = 2 \frac{1}{\Psi_T} \frac{\partial}{\partial x_p} \Psi_T = 2 \bm{g}^T \bm{W}_p.
 \end{equation}
 Then the Langevin and Fokker-Planck equations give a new trial position for the $p$th particle in the $i$th iteration according to
 \begin{equation}

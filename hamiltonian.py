@@ -4,26 +4,28 @@ import numpy as np
 
 class Calogero:
 
-    def __init__(self, wavefunction, nu):
+    def __init__(self, wavefunction, nu, gamma):
         """constructor"""
         self.wavefunction = wavefunction        # trial wave function
         self.nu = nu                            # interaction parameter
+        self.gamma = gamma                      # interaction ramp-up speed hyperparameter
         
     
-    def calc_local_energy(self, x):
-        """local energy"""
+    
+    def calc_local_energy(self, x, iteration):
+        """local energy with gradually introduced interaction potential"""
         EL = self.wavefunction.calc_local_kinetic_energy(x)
         
         sum = 0.0
         for p in range(self.wavefunction.N):
             sum += x[p]**2
         EL += 0.5*sum
-        
+
         sum = 0.0
         for p in range(self.wavefunction.N-1):
             for q in range(p+1, self.wavefunction.N):
                 sum += 1.0/(x[p]-x[q])**2
-        EL += self.nu*(self.nu-1)*sum
+        EL += min(self.gamma*iteration**2, self.nu*(self.nu-1)*sum)
         
         return EL
     
@@ -37,19 +39,22 @@ class Calogero:
     def exact_gs_wavefunction(self, x):
         """exact ground state wave function"""
         psi = self.nonint_gs_wavefunction(x);
-        prod = 1.0
         for p in range(self.wavefunction.N-1):
             for q in range(p+1, self.wavefunction.N):
-                prod *= (abs(x[p]-x[q]))**self.nu
-        psi *= prod
+                psi *= (abs(x[p]-x[q]))**self.nu
         return psi
+    
+    def exact_qforce(self, x, p):
+        """quantum force on pth particle for exact interacting case"""
+        print("need to finish exact qforce calculations")
+        return 0
     
     
     def nonint_gs_wavefunction(self, x):
         """ground state wave function for 1D harmonic oscillator"""
-        sum = 0.0
-        for p in range(self.wavefunction.N):
-            sum += x[p]**2
-        psi = np.exp(-0.5*sum)
-        return psi
-        
+        return np.exp(-0.5*np.dot(x,x))
+    
+    def nonint_qforce(self, x, p):
+        """quantum force on pth particle for non-interacting case"""
+        return -2.0*x[p]
+

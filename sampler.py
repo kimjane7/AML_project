@@ -1,8 +1,6 @@
 from wavefunction import FeedForwardNeuralNetwork
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-from matplotlib import rc
+
 
 
 class BruteForce:
@@ -14,13 +12,14 @@ class BruteForce:
         self.maxstep = maxstep
     
     
-    def sample(self, use_exact=False):
-        """return True and change current position if sample is accepted"""
+    def sample(self):
+        """sample from non-interacting ground state,
+           exact ground state, or trial wave function """
         self.get_trial_sample()
         accepted = False
-        if(np.random.sample() < self.calc_acceptance_ratio(use_exact)):
+        if(np.random.sample() < self.calc_acceptance_ratio()):
             accepted = True
-            self.wavefunction.x = self.trial_x.copy()
+            self.wavefunction.x = np.sort(self.trial_x)
         return accepted
         
         
@@ -31,60 +30,55 @@ class BruteForce:
         self.trial_x[rand_p] += self.maxstep*np.random.uniform(-1.0,1.0)
 
 
-    def calc_acceptance_ratio(self, use_exact):
+    def calc_acceptance_ratio(self):
         """acceptance ratio for Metropolis-Hastings algorithm"""
         
-        if use_exact:
-            psi = self.hamiltonian.exact_gs_wavefunction(self.wavefunction.x)
-            trial_psi = self.hamiltonian.exact_gs_wavefunction(self.trial_x)
-        
-        else:
-            psi = self.wavefunction.calc_psi(self.wavefunction.x)
-            trial_psi = self.wavefunction.calc_psi(self.trial_x)
+        psi = self.wavefunction.calc_psi(self.wavefunction.x)
+        trial_psi = self.wavefunction.calc_psi(self.trial_x)
             
         return (trial_psi/psi)**2
-        
-        
-    def plot_samples(self, num_samples, plotfile, use_exact=False):
-        """makes density plot for distribution of samples"""
-        
-        # let sampler to reach equilibrium
-        fraction_skip = 0.1
-        num_skip_samples = int(fraction_skip*num_samples)
-        num_effective_samples = num_samples-num_skip_samples
-        for sample in range(num_skip_samples):
-            accepted = self.sample(use_exact)
-        
-        # collect all sampled positions
-        x = np.empty(self.wavefunction.N*num_effective_samples)
-        for sample in range(num_effective_samples):
-            accepted = self.sample(use_exact)
-            x[self.wavefunction.N*sample:self.wavefunction.N*(sample+1)] = self.wavefunction.x
-        
-        plt.figure(figsize=(8,6))
-        plt.rc('font', family='serif')
-        plt.rc('text', usetex=True)
-        plt.xlabel('Position $x$', fontsize=12)
-        plt.ylabel(r'Probability distribution $|\Psi|^2$', fontsize=12)
-        N = str(self.wavefunction.N)
-        nu = str(self.hamiltonian.nu)
-        plt.title(r'Distribution of particles in the Calogero model ($N=$ '+N+r', $\nu=$ '+nu+')', fontsize=16)
-        sns.set_style("whitegrid")
-        sns.kdeplot(x, shade=True)
-        plt.savefig(plotfile, format="pdf")
-            
 
 
-"""
+
 class ImportanceSampling:
 
-    def __init__(self, wavefunction):
+    def __init__(self, hamiltonian, timestep):
+    
+        self.hamiltonian = hamiltonian
+        self.wavefunction = self.hamiltonian.wavefunction
+        self.timestep = timestep
+        self.diff_const = 0.5
+
+    def sample(self):
+        """return True and change current position if sample is accepted"""
+        self.get_trial_sample()
+        accepted = False
+        if(np.random.sample() < self.calc_acceptance_ratio()):
+            accepted = True
+            self.wavefunction.x = np.sort(self.trial_x)
+        return accepted
+        
+
+    def get_trial_sample(self, option):
+        """kick one random particle using quantum force to get new positions"""
+        self.trial_x = self.wavefunction.x.copy()
+        self.rand_p = np.random.randint(self.wavefunction.N)
+        self.qforce = self.wavefunction.calc_qforce(self.wavefunction.x, self.rand_p)
+        self.trial_x[self.rand_p] += self.diff_const*self.timestep*self.qforce \
+                                     + np.random.normal()*np.sqrt(self.timestep)
+    
         
     
-    def get_trial_sample():
-    
-    def calc_acceptance_ratio():
-    
+    def calc_acceptance_ratio(self, option):
+        """acceptance ratio for importance sampling algorithm"""
+        
+        psi = self.wavefunction.calc_psi(self.wavefunction.x)
+        trial_psi = self.wavefunction.calc_psi(self.trial_x)
+        
+        self.trial_qforce = self.wavefunction.calc_qforce(self.trial_x, self.rand_p)
+        
+        greens = 0.5*(self.wavefunction.x[self.rand_p]-self.trial_x[self.rand_p])*(self.trial_qforce+self.qforce) \
+                 + 0.25*self.diff_const*self.timestep*(self.qforce**2-self.trial_qforce**2)
+            
+        return np.exp(greens)*(trial_psi/psi)**2
 
-"""
-    
