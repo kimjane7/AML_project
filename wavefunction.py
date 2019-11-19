@@ -13,12 +13,6 @@ class FeedForwardNeuralNetwork:
         self.W = np.random.normal(0.0, 0.1, (self.M,self.N))     # weights for visible to hidden
         self.alpha = self.vectorize(self.W, self.w, self.b)      # all parameters
         
-    def supervised_train(self, X, y):
-        """return mean square error for inputs X and targets y"""
-        n = X.shape[0]                                           # number of data samples
-            
-            
-    
         
     def calc_psi(self, x):
         """wave function"""

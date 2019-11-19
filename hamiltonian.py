@@ -9,7 +9,6 @@ class Calogero:
         self.wavefunction = wavefunction        # trial wave function
         self.nu = nu                            # interaction parameter
         self.gamma = gamma                      # interaction ramp-up speed hyperparameter
-        
     
     
     def calc_local_energy(self, x, iteration):

@@ -10,6 +10,7 @@ class BruteForce:
         self.wavefunction = hamiltonian.wavefunction
         self.hamiltonian = hamiltonian
         self.maxstep = maxstep
+        self.name = 'Brute Force MCMC'
     
     
     def sample(self):
@@ -48,6 +49,7 @@ class ImportanceSampling:
         self.wavefunction = self.hamiltonian.wavefunction
         self.timestep = timestep
         self.diff_const = 0.5
+        self.name = 'Importance Sampling'
 
     def sample(self):
         """return True and change current position if sample is accepted"""

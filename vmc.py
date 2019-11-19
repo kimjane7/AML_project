@@ -1,10 +1,9 @@
+import os.path
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 class VariationalMonteCarlo:
 
-    def __init__(self, optimizer, sampler, hamiltonian, num_samples, tolerance, filename):
+    def __init__(self, optimizer, sampler, hamiltonian, supervised_num_samples, reinforcement_num_samples, patience):
         """constructor"""
         
         self.optimizer = optimizer
@@ -12,30 +11,41 @@ class VariationalMonteCarlo:
         self.hamiltonian = hamiltonian
         self.wavefunction = self.hamiltonian.wavefunction
         self.num_params = self.optimizer.num_params
-        self.num_samples = num_samples
-        self.tolerance = tolerance
-        self.filename = filename
-
+        self.supervised_num_samples = supervised_num_samples
+        self.reinforcement_num_samples = reinforcement_num_samples
+        self.patience = patience
+        
+        # file names
+        tag = 'N'+str(self.wavefunction.N)+'_M'+str(self.wavefunction.M)
+        self.init_state_file = 'initialstates/'+tag+'_samples'+str(self.supervised_num_samples)+'_minMSE.txt'
+        self.supervised_output_file = 'outputs/supervised_'+tag+'_samples'+str(self.supervised_num_samples)+'_minMSE.txt'
+        self.reinforcement_output_file = 'outputs/reinforcement_'+tag+'_samples'+str(self.reinforcement_num_samples)+'.txt'
+        
+    
 
     def minimize_energy(self):
         """optimizes wave function parameters"""
         
-        # get weights and biases for non-interacting case
-        print('='*73)
-        print('Supervised learning of the non-interacting case...')
-        print('='*73)
-        self.train_nonint_case()
-        print('Done.')
+        # if initial state file exists, load parameters
+        # and continue to reinforcement learning part
+        if os.path.isfile(self.init_state_file) and os.path.getsize(self.init_state_file) > 0:
+            
+            # skip over snapshots and extract optimized parameters
+            statefile = open(self.init_state_file, 'r')
+            init_state = statefile.readlines()[-1]
+            statefile.close()
+            
+        # else do supervised learning of parameters for
+        # non-interacting case and write to initial state file
+        else:
+            print('Supervised learning non-interacting case...')
+            self.train_nonint_case()
         
-        
-        """CHECK"""
-        '''
         # train wave function for interacting case
         if self.hamiltonian.nu > 0.0:
-            print('Reinforcement learning of the interacting case of nu = ', self.hamiltonian.nu, '...')
+            print('Reinforcement learning interacting case of nu = ', self.hamiltonian.nu, '...')
+            self.optimizer.reset()
             self.train_int_case()
-            print('Done.')
-        '''
 
 
     def train_nonint_case(self):
@@ -44,68 +54,57 @@ class VariationalMonteCarlo:
            non-interacting particles in 1D harmonic oscillator"""
            
         optimize = True
+        min_cost = 100
+        min_cost_cycle = 0
         cycles = 0
-        print('{:<10s}{:<14s}{:<14s}{:<20s}'.format('cycles', 'fidelity', 'MSE', '||MSE gradient||'))
         
-        # for plotting snapshots of trial wave function
+        # training progress
+        outfile = open(self.supervised_output_file, 'w')
+        outfile.write('{:<10s}{:<14s}{:<14s}{:<20s}\n'.format('# cycles', 'fidelity', 'MSE', '||MSE gradient||'))
+        
+        # snapshots and converged state
+        statefile = open(self.init_state_file, 'w')
+        snapshots = [0, 10, 100, 200, 500, 1000, 10000, 20000, 50000]
         iter = 0
-        snapshots = [0, 10, 100, 200, 1000, 10000]
-        colors = ['red', 'orange', 'yellowgreen', 'green', 'blue', 'purple']
-        plt.figure(figsize=(10,8))
-        plt.rc('font', family='serif')
-        plt.rc('text', usetex=True)
-        plt.xlabel(r'Position $x$ of one particle', fontsize=12)
-        plt.ylabel(r'Positive-definite wave function $\Psi$', fontsize=12)
-        plt.title('Supervised training for the non-interacting case', fontsize=14)
-        plt.xlim(-10,10)
-        plt.ylim(-0.2,1.5)
-        
-        # plot non-interacting wave function
-        num_points = 200
-        x = np.linspace(-10.0,10.0,num_points)
-        psi_nonint = np.zeros(num_points)
-        for i in range(num_points):
-            psi_nonint[i] = self.hamiltonian.nonint_gs_wavefunction([x[i]])
-        plt.plot(x, psi_nonint, color='k', label='exact')
-        
+
         while optimize:
         
-            # plot snapshots of trial wave function
-            if cycles == snapshots[iter]:
-            
-                psi = np.zeros(num_points)
-                for i in range(num_points):
-                    psi[i] = self.wavefunction.calc_psi([x[i]])
-                plt.plot(x, psi, color=colors[iter], label=str(cycles)+' updates')
+            # write snapshots
+            if snapshots[iter] == cycles:
+                statefile.write(str(cycles)+'\t'+str(self.wavefunction.alpha)+'\n')
                 iter += 1
-                
-            if iter == len(snapshots):
-                
-                plt.legend(loc='upper left')
-                plt.savefig('supervised_snapshots_20000samples.pdf', format='pdf')
-                break
-                
-                
-            X = np.random.normal(0.0, 1.0, (self.num_samples, self.wavefunction.N))
+        
+            # get data, calculate cost, update parameters
+            X = np.random.normal(0.0, 1.0, (self.supervised_num_samples, self.wavefunction.N))
             self.calc_cost_gradient(X)
             self.optimizer.update_params(self.gradient)
             cycles += 1
             
-            print('{:<10d}{:<14.5f}{:<14.5f}{:<20.5f}'.format(cycles, self.fidelity, self.cost, np.linalg.norm(self.gradient)))
+            # write progress
+            outfile.write('{:<10d}{:<14.8f}{:<14.8f}{:<20.8f}\n'.format(cycles, self.fidelity, self.cost, np.linalg.norm(self.gradient)))
             
-            if np.linalg.norm(self.gradient) < self.tolerance:
+            # stop training when cost doesn't decrease for 'patience' cycles
+            if self.cost < min_cost:
+                min_cost = self.cost
+                min_cost_cycle = cycles
+                
+            elif abs(cycles-min_cost_cycle) == self.patience:
                 optimize = False
+                statefile.write(str(cycles)+'\t'+str(self.wavefunction.alpha)+'\n')
+        
+        outfile.close()
+        statefile.close()
 
 
 
-
-    """CHECK"""
     def train_int_case(self):
         """reinforcement learning of ground state wave
            function in interacting case in which the
            interaction potential is gradually introduced"""
         
         optimize = True
+        min_EL = 100
+        min_EL_cycle = 0
         cycles = 0
         print('{:<10s}{:<20s}{:<20s}{:<20s}{:<20s}'.format('cycles', 'avg EL', 'var EL', '||gradient EL||', 'ratio accepted samples'))
         
@@ -117,7 +116,11 @@ class VariationalMonteCarlo:
             
             print('{:<10d}{:<20.5f}{:<20.5f}{:<20.5f}{:<20.15}'.format(cycles, self.avg_EL, self.var_EL, np.linalg.norm(self.gradient), self.ratio_accepted))
             
-            if np.linalg.norm(self.gradient) < self.tolerance:
+            # stop training when local energy doesn't decrease for 'patience' cycles
+            if self.EL < min_EL:
+                min_EL = self.EL
+                min_EL_cycle = cycles
+            elif abs(cycles-min_EL_cycle) == self.patience:
                 optimize = False
 
 
@@ -135,19 +138,11 @@ class VariationalMonteCarlo:
         epsilon = 1e-8
     
         # take samples
-        for sample in range(self.num_samples):
-            
-            # draw positions from non-interacting ground state (normal distribution)
-            #x = np.random.normal(0.0, 1.0, self.wavefunction.N)
-            #x = np.random.uniform(-5.0, 5.0, self.wavefunction.N)
+        for sample in range(self.supervised_num_samples):
 
             # calculate trial and target wave functions
             psi_trial = self.wavefunction.calc_psi(X[sample])
             psi_nonint = self.hamiltonian.nonint_gs_wavefunction(X[sample])
-            
-            #print("trial", psi_trial)
-            #print("nonint", psi_nonint)
-        
             
             # add up ratio of wave functions A for fidelity
             A = psi_nonint/(psi_trial+epsilon)
@@ -158,31 +153,22 @@ class VariationalMonteCarlo:
             self.cost += (psi_trial-psi_nonint)**2
             
             # add up values for MSE gradient
-            #print("x = {0}, grad logpsi = {1}".format(x, self.wavefunction.calc_gradient_logpsi(x)))
             self.gradient += 2.0*(psi_trial-psi_nonint) \
                                   *self.wavefunction.calc_gradient_logpsi(X[sample])*psi_trial
     
         
         # calculate fidelity
-        avg_A /= self.num_samples
-        avg_A2 /= self.num_samples
+        avg_A /= self.supervised_num_samples
+        avg_A2 /= self.supervised_num_samples
         self.fidelity = avg_A**2/(avg_A2+epsilon)
 
-
         # calculate cost and its gradient
-        self.cost /= self.num_samples
-        self.gradient /= self.num_samples
-    
-        """
-        plt.figure(figsize=(8,6))
-        plt.rc('font', family='serif')
-        plt.rc('text', usetex=True)
-        sns.set_style("whitegrid")
-        sns.kdeplot(np.ravel(X), shade=True)
-        plt.show()
-        """
+        self.cost /= self.supervised_num_samples
+        self.gradient /= self.supervised_num_samples
 
 
+
+    ''' this will be useful for fidelity training
     def estimate_gradient_nonint_overlap(self):
         """estimate gradient of overlap integral between trial
            wave function and non-interacting ground state"""
@@ -245,6 +231,7 @@ class VariationalMonteCarlo:
         
         print("avg position = ", avg_position/num_effective_samples)
         
+    '''
             
 
     def estimate_gradient_local_energy(self):
@@ -273,7 +260,7 @@ class VariationalMonteCarlo:
                 num_accepted += 1
             
             # calculate local energy and gradient of trial wave function
-            EL = self.hamiltonian.calc_local_energy(self.wavefunction.x,1000)
+            EL = self.hamiltonian.calc_local_energy(self.wavefunction.x, self.optimizer.t)
             gradient_logpsi = self.wavefunction.calc_gradient_logpsi(self.wavefunction.x)
             
             # add up values for expectation values

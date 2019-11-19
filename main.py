@@ -20,9 +20,9 @@ def main():
     learning_rate = 0.01
     beta1 = 0.9
     beta2 = 0.999
-    num_samples = 20000
-    tolerance = 1E-6
-    filename = "test.dat"
+    supervised_num_samples = 20000
+    reinforcement_num_samples = 200000
+    patience = 500
 
     # initialize objects
     WaveFunction = FeedForwardNeuralNetwork(num_particles,num_hidden)
@@ -30,7 +30,7 @@ def main():
     Sampler = BruteForce(Hamiltonian, max_step)
     #Sampler = ImportanceSampling(Hamiltonian, time_step)
     Optimizer = Adam(WaveFunction, learning_rate, beta1, beta2)
-    VMC = VariationalMonteCarlo(Optimizer, Sampler, Hamiltonian, num_samples, tolerance, filename)
+    VMC = VariationalMonteCarlo(Optimizer, Sampler, Hamiltonian, supervised_num_samples, reinforcement_num_samples, patience)
     
     # run optimization
     VMC.minimize_energy()
