@@ -65,12 +65,12 @@ class FeedForwardNeuralNetwork:
     
     def calc_ff(self, z):
         """first derivative of activation function"""
-        return 1.0-((np.tanh(z))**2)
+        return 1.0-np.tanh(z)**2
     
     
     def calc_fff(self, z):
         """second derivative of activation function"""
-        return 2.0*np.tanh(z)*(1.0-(np.tanh(z))**2)
+        return 2.0*np.tanh(z)*(np.tanh(z)**2-1.0)
         
         
     def vectorize(self, W, b, w):
@@ -79,9 +79,9 @@ class FeedForwardNeuralNetwork:
         return alpha
         
         
-    def separate(self, alpha):
+    def separate(self):
         """split parameter vector into weights and biases"""
-        self.W = alpha[:self.M*self.N].reshape(self.M,self.N)
-        self.b = alpha[self.M*self.N:self.M*self.N+self.M]
-        self.w = alpha[-self.M:]
+        self.W = self.alpha[:self.M*self.N].reshape(self.M,self.N)
+        self.b = self.alpha[self.M*self.N:self.M*self.N+self.M]
+        self.w = self.alpha[-self.M:]
     

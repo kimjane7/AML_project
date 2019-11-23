@@ -22,7 +22,7 @@ class StochasticGradientDescent:
 
         eta = 1.0/self.t
         self.wavefunction.alpha -= eta*gradient
-        self.wavefunction.separate(self.wavefunction.alpha)
+        self.wavefunction.separate()
         self.t += 1
 
 
@@ -31,7 +31,7 @@ class StochasticGradientDescent:
 
 class Adam:
 
-    def __init__(self, wavefunction, learning_rate, beta1, beta2):
+    def __init__(self, wavefunction, learning_rate=0.001, beta1=0.9, beta2=0.999):
         """constructor"""
 
         self.wavefunction = wavefunction
@@ -68,5 +68,5 @@ class Adam:
         
         # update parameters
         self.wavefunction.alpha -= self.eta*mhat/(np.sqrt(vhat)+self.epsilon)
-        self.wavefunction.separate(self.wavefunction.alpha)
+        self.wavefunction.separate()
         self.t += 1

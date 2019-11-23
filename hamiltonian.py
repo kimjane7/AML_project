@@ -2,7 +2,7 @@ from wavefunction import FeedForwardNeuralNetwork
 import numpy as np
 
 
-class Calogero:
+class CalogeroSutherland:
 
     def __init__(self, wavefunction, nu, gamma):
         """constructor"""
@@ -24,7 +24,10 @@ class Calogero:
         for p in range(self.wavefunction.N-1):
             for q in range(p+1, self.wavefunction.N):
                 sum += 1.0/(x[p]-x[q])**2
-        EL += min(self.gamma*iteration**2, self.nu*(self.nu-1)*sum)
+        if self.gamma*iteration**2 < sum:
+            EL += self.gamma*iteration**2
+        else:
+            EL += self.nu*(self.nu-1.0)*sum
         
         return EL
     

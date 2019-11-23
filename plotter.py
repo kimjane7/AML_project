@@ -1,73 +1,102 @@
+import numpy as np
+from wavefunction import FeedForwardNeuralNetwork
+from hamiltonian import CalogeroSutherland
+from sampler import ImportanceSampling
 import seaborn as sns
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib.cm as cm
 from matplotlib import rc
 
-def plot_samples(self, num_samples, plotfile, use_exact=False):
-    """makes density plot for distribution of samples"""
-    
-    # let sampler to reach equilibrium
-    fraction_skip = 0.1
-    num_skip_samples = int(fraction_skip*num_samples)
-    num_effective_samples = num_samples-num_skip_samples
-    for sample in range(num_skip_samples):
-        accepted = self.sample(use_exact)
-    
-    # collect all sampled positions
-    x = np.empty(self.wavefunction.N*num_effective_samples)
-    for sample in range(num_effective_samples):
-        accepted = self.sample(use_exact)
-        x[self.wavefunction.N*sample:self.wavefunction.N*(sample+1)] = self.wavefunction.x
-    
-    plt.figure(figsize=(8,6))
-    plt.rc('font', family='serif')
-    plt.rc('text', usetex=True)
-    plt.xlabel('Position $x$', fontsize=12)
-    plt.ylabel(r'Probability distribution $|\Psi|^2$', fontsize=12)
-    N = str(self.wavefunction.N)
-    nu = str(self.hamiltonian.nu)
-    plt.title(r'Distribution of particles in the Calogero model ($N=$ '+N+r', $\nu=$ '+nu+')', fontsize=16)
-    sns.set_style("whitegrid")
-    sns.kdeplot(x, shade=True)
-    plt.savefig(plotfile, format="pdf")
-
-
-
-'''
-# for plotting snapshots of trial wave function
-iter = 0
-snapshots = [0, 10, 100, 200, 1000, 10000]
-colors = ['red', 'orange', 'yellowgreen', 'green', 'blue', 'purple']
-plt.figure(figsize=(10,8))
 plt.rc('font', family='serif')
-plt.rc('text', usetex=True)
-plt.xlabel(r'Position $x$ of one particle', fontsize=12)
-plt.ylabel(r'Positive-definite wave function $\Psi$', fontsize=12)
-plt.title('Supervised training for the non-interacting case', fontsize=14)
-plt.xlim(-10,10)
-plt.ylim(-0.2,1.5)
+mpl.rcParams['text.usetex'] = True
+mpl.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}']
 
 
-# plot non-interacting wave function
-num_points = 200
-x = np.linspace(-10.0,10.0,num_points)
-psi_nonint = np.zeros(num_points)
-for i in range(num_points):
-    psi_nonint[i] = self.hamiltonian.nonint_gs_wavefunction([x[i]])
-plt.plot(x, psi_nonint, color='k', label='exact')
-'''
-'''
-# plot snapshots of trial wave function
-if cycles == snapshots[iter]:
+def plot_supervised_snapshots_N1(M):
 
-    psi = np.zeros(num_points)
+    file = 'initialstates/N1_M'+str(M)+'.txt'
+    statefile = open(file, 'r')
+    snapshots = statefile.readlines()
+    statefile.close()
+    
+    WaveFunction = FeedForwardNeuralNetwork(1, M)
+    Hamiltonian = CalogeroSutherland(WaveFunction, 0.0, 0.0)
+    
+    plt.figure(figsize=(12,8))
+    colors = cm.rainbow_r(np.linspace(0, 1, len(snapshots)))
+    
+    num_points = 200
+    x = np.linspace(-5.0,5.0,num_points)
+    
+    for snapshot, color in zip(snapshots, colors):
+        
+        WaveFunction.alpha = np.array(snapshot.split()[1:]).astype(np.float)
+        WaveFunction.separate()
+        
+        psi = np.zeros(num_points)
+        for i in range(num_points):
+            psi[i] = WaveFunction.calc_psi([x[i]])
+            
+        plt.plot(x, psi, color=color, linewidth=3, label=str(snapshot.split()[0]))
+    
+    psi_nonint = np.zeros(num_points)
     for i in range(num_points):
-        psi[i] = self.wavefunction.calc_psi([x[i]])
-    plt.plot(x, psi, color=colors[iter], label=str(cycles)+' updates')
-    iter += 1
+        psi_nonint[i] = Hamiltonian.nonint_gs_wavefunction([x[i]])
+    plt.plot(x, psi_nonint, color='k', linewidth=2, linestyle='dashed', label=r'$\Psi_0^{non\text{-}int}(x)$')
     
-if iter == len(snapshots):
+    plt.ylim(-0.1,1.5)
+    plt.xlim(-5,5)
+    plt.ylabel(r'Ground state wave function $\Psi(x)$', fontsize=14)
+    plt.xlabel(r'Position $x$ of one particle', fontsize=14)
+    plt.title(r'Progression of supervised learning of initial parameters using '+str(M)+' hidden units', fontsize=16)
+    plt.legend(loc='upper right', fontsize=14)
+    plt.savefig('figures/N1_M'+str(M)+'_supervised_snapshots.pdf', format='pdf')
+
+def plot_supervised_snapshots(N, M):
     
-    plt.legend(loc='upper left')
-    plt.savefig('supervised_snapshots_20000samples.pdf', format='pdf')
-    optimize = False
-'''
+    if N == 1:
+        plot_supervised_snapshots_N1(M)
+        
+    else:
+        file = 'initialstates/N'+str(N)+'_M'+str(M)+'.txt'
+        statefile = open(file, 'r')
+        snapshots = statefile.readlines()
+        statefile.close()
+        
+        WaveFunction = FeedForwardNeuralNetwork(N, M)
+        Hamiltonian = CalogeroSutherland(WaveFunction, 0.0, 0.0)
+        Sampler = ImportanceSampling(Hamiltonian, 0.001)
+        
+        plt.figure(figsize=(12,8))
+        sns.set_style("whitegrid")
+        colors = cm.rainbow_r(np.linspace(0, 1, len(snapshots)))
+        num_samples = 10000
+        num_skip = int(0.1*num_samples)
+    
+        for snapshot, color in zip(snapshots, colors):
+            
+            WaveFunction.alpha = np.array(snapshot.split()[1:]).astype(np.float)
+            WaveFunction.separate()
+            
+            for sample in range(num_skip):
+                accepted = Sampler.sample()
+                
+            x = np.empty(N*num_samples)
+            for sample in range(num_samples):
+                accepted = Sampler.sample()
+                x[N*sample:N*(sample+1)] = WaveFunction.x
+            sns.kdeplot(x, shade=True, color=color)
+        
+        x = np.random.normal(N*num_samples)
+        sns.kdeplot(x, shade=False, color='k', linestyle='dashed')
+        
+        plt.ylim(-0.1,1.5)
+        plt.xlim(-5,5)
+        plt.ylabel(r'Probability distribution $|\Psi(x)|^2$', fontsize=14)
+        plt.xlabel(r'Positions $x$ of '+str(N)+' particles', fontsize=14)
+        plt.title(r'Progression of supervised learning of initial parameters for '+str(N)+' particles using '+str(M)+' hidden units', fontsize=16)
+        plt.legend(loc='upper right')
+        plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_supervised_snapshots.pdf', format='pdf')
+
+plot_supervised_snapshots(2,20)

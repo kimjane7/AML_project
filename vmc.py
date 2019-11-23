@@ -1,51 +1,71 @@
+import time
 import os.path
 import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 class VariationalMonteCarlo:
 
-    def __init__(self, optimizer, sampler, hamiltonian, supervised_num_samples, reinforcement_num_samples, patience):
+    def __init__(self, optimizer, sampler, num_samples, reg_param):
         """constructor"""
         
         self.optimizer = optimizer
         self.sampler = sampler
-        self.hamiltonian = hamiltonian
+        self.hamiltonian = self.sampler.hamiltonian
         self.wavefunction = self.hamiltonian.wavefunction
         self.num_params = self.optimizer.num_params
-        self.supervised_num_samples = supervised_num_samples
-        self.reinforcement_num_samples = reinforcement_num_samples
-        self.patience = patience
+        self.num_samples = num_samples
+        self.reg_param = reg_param
         
         # file names
         tag = 'N'+str(self.wavefunction.N)+'_M'+str(self.wavefunction.M)
-        self.init_state_file = 'initialstates/'+tag+'_samples'+str(self.supervised_num_samples)+'_minMSE.txt'
-        self.supervised_output_file = 'outputs/supervised_'+tag+'_samples'+str(self.supervised_num_samples)+'_minMSE.txt'
-        self.reinforcement_output_file = 'outputs/reinforcement_'+tag+'_samples'+str(self.reinforcement_num_samples)+'.txt'
+        
+        self.supervised_state_file = 'states/'+tag+'.txt'
+        self.supervised_output_file = 'outputs/'+tag+'.txt'
+        self.supervised_data_file = 'data/supervised_'+tag+'.txt'
+        
+        self.reinforcement_state_file = 'states/'+tag+'.txt'
+        self.reinforcement_output_file = 'outputs/reinforcement_'+tag+'_samples'+str(self.num_samples)  \
+                                         +'_nu'+str(self.hamiltonian.nu)+'.txt'
+        self.reinforcement_data_file = 'data/reinforcement_'+tag+'_samples'+str(self.num_samples) \
+                                        +'_nu'+str(self.hamiltonian.nu)+'.txt'
         
     
-
     def minimize_energy(self):
         """optimizes wave function parameters"""
         
         # if initial state file exists, load parameters
         # and continue to reinforcement learning part
-        if os.path.isfile(self.init_state_file) and os.path.getsize(self.init_state_file) > 0:
+        if os.path.isfile(self.supervised_state_file) and os.path.getsize(self.supervised_state_file) > 0:
+            print('Reading initial state from file...')
             
             # skip over snapshots and extract optimized parameters
-            statefile = open(self.init_state_file, 'r')
+            statefile = open(self.supervised_state_file, 'r')
             init_state = statefile.readlines()[-1]
             statefile.close()
+            
+            # set initial parameters
+            self.wavefunction.alpha = np.array(init_state.split()[1:]).astype(np.float)
+            self.wavefunction.separate()
+            
             
         # else do supervised learning of parameters for
         # non-interacting case and write to initial state file
         else:
             print('Supervised learning non-interacting case...')
+            start = time.time()
             self.train_nonint_case()
+            end = time.time()
+            print('Done in {:.3f} seconds.'.format(end-start))
         
         # train wave function for interacting case
         if self.hamiltonian.nu > 0.0:
             print('Reinforcement learning interacting case of nu = ', self.hamiltonian.nu, '...')
             self.optimizer.reset()
+            start = time.time()
             self.train_int_case()
+            end = time.time()
+            print('Done in {:.3f} seconds.'.format(end-start))
 
 
     def train_nonint_case(self):
@@ -54,45 +74,58 @@ class VariationalMonteCarlo:
            non-interacting particles in 1D harmonic oscillator"""
            
         optimize = True
-        min_cost = 100
-        min_cost_cycle = 0
         cycles = 0
-        
+        patience = 50
+        min_gradient = 1
+        min_gradient_cycles = 0
+        min_samples = 40000
+        samples = min_samples
+
         # training progress
-        outfile = open(self.supervised_output_file, 'w')
-        outfile.write('{:<10s}{:<14s}{:<14s}{:<20s}\n'.format('# cycles', 'fidelity', 'MSE', '||MSE gradient||'))
+        datafile = open(self.supervised_data_file, 'w')
+        datafile.write('{:<10s}{:<14s}{:<14s}{:<20s}\n'.format('# cycles', 'fidelity', 'MSE', '||MSE gradient||'))
         
         # snapshots and converged state
-        statefile = open(self.init_state_file, 'w')
-        snapshots = [0, 10, 100, 200, 500, 1000, 10000, 20000, 50000]
+        statefile = open(self.supervised_state_file, 'w')
         iter = 0
+        snapshots = [0, 10, 100, 200, 500, 1000, 1500, 2000, 2500, 3000, \
+                     3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000]
+        
+        
+        print('Starting with {0} samples...'.format(samples))
 
         while optimize:
         
             # write snapshots
             if snapshots[iter] == cycles:
-                statefile.write(str(cycles)+'\t'+str(self.wavefunction.alpha)+'\n')
+                param_str = ''
+                for param in self.wavefunction.alpha:
+                    param_str += str(param)+' '
+                statefile.write(str(cycles)+' '+param_str+'\n')
                 iter += 1
+                if iter == len(snapshots):
+                    optimize = False
         
             # get data, calculate cost, update parameters
-            X = np.random.normal(0.0, 1.0, (self.supervised_num_samples, self.wavefunction.N))
+            X = np.concatenate((np.random.normal(0.0, 1.0, (int(0.9*samples), self.wavefunction.N)), \
+                                np.random.uniform(-10.0, 10.0, (int(0.1*samples), self.wavefunction.N))))
             self.calc_cost_gradient(X)
             self.optimizer.update_params(self.gradient)
             cycles += 1
             
             # write progress
-            outfile.write('{:<10d}{:<14.8f}{:<14.8f}{:<20.8f}\n'.format(cycles, self.fidelity, self.cost, np.linalg.norm(self.gradient)))
+            datafile.write('{:<10d}{:<14.8f}{:<14.8f}{:<20.8f}\n'.format(cycles, self.fidelity, self.cost, np.linalg.norm(self.gradient)))
             
-            # stop training when cost doesn't decrease for 'patience' cycles
-            if self.cost < min_cost:
-                min_cost = self.cost
-                min_cost_cycle = cycles
-                
-            elif abs(cycles-min_cost_cycle) == self.patience:
-                optimize = False
-                statefile.write(str(cycles)+'\t'+str(self.wavefunction.alpha)+'\n')
+            if np.linalg.norm(self.gradient) < min_gradient:
+                min_gradient = np.linalg.norm(self.gradient)
+                min_gradient_cycles = cycles
+            elif cycles-min_gradient_cycles > patience:
+                samples += min_samples
+                min_gradient = np.linalg.norm(self.gradient)
+                min_gradient_cycles = cycles
+                print('Increasing number of samples to {0} at cycle {1}...'.format(samples, cycles))
         
-        outfile.close()
+        datafile.close()
         statefile.close()
 
 
@@ -108,19 +141,38 @@ class VariationalMonteCarlo:
         cycles = 0
         print('{:<10s}{:<20s}{:<20s}{:<20s}{:<20s}'.format('cycles', 'avg EL', 'var EL', '||gradient EL||', 'ratio accepted samples'))
         
+        # training progress
+        #datafile = open(self.reinforcement_data_file, 'w')
+        #datafile.write('{:<10s}{:<14s}{:<14s}{:<20s}\n'.format('# cycles', 'fidelity', 'MSE', '||MSE gradient||'))
+        
+        # snapshots and converged state
+        #statefile = open(self.reinforcement_state_file, 'w')
+        #snapshots = [0, 10, 100, 200, 500, 1000, 1500, 2000, 2500, 3000, \
+         #            3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000]
+        #iter = 0
+        
+        print('Using {0} samples...'.format(self.num_samples))
+        
         while optimize:
+        
+        
+            # collect all sampled positions
+            x = np.empty(self.wavefunction.N*self.num_samples)
+            for sample in range(self.num_samples):
+                accepted = self.sampler.sample()
+                x[self.wavefunction.N*sample:self.wavefunction.N*(sample+1)] = self.wavefunction.x
+            sns.set_style("whitegrid")
+            sns.kdeplot(x, shade=True)
+            plt.show()
             
-            self.estimate_gradient_local_energy()
+            self.calc_local_energy_gradient()
             self.optimizer.update_params(self.gradient)
             cycles += 1
             
             print('{:<10d}{:<20.5f}{:<20.5f}{:<20.5f}{:<20.15}'.format(cycles, self.avg_EL, self.var_EL, np.linalg.norm(self.gradient), self.ratio_accepted))
             
             # stop training when local energy doesn't decrease for 'patience' cycles
-            if self.EL < min_EL:
-                min_EL = self.EL
-                min_EL_cycle = cycles
-            elif abs(cycles-min_EL_cycle) == self.patience:
+            if cycles > 100:
                 optimize = False
 
 
@@ -133,12 +185,13 @@ class VariationalMonteCarlo:
         avg_A = 0.0
         avg_A2 = 0.0
         self.fidelity = 0.0
+        samples = X.shape[0]
 
         # prevent division by zero
         epsilon = 1e-8
     
         # take samples
-        for sample in range(self.supervised_num_samples):
+        for sample in range(samples):
 
             # calculate trial and target wave functions
             psi_trial = self.wavefunction.calc_psi(X[sample])
@@ -158,83 +211,15 @@ class VariationalMonteCarlo:
     
         
         # calculate fidelity
-        avg_A /= self.supervised_num_samples
-        avg_A2 /= self.supervised_num_samples
-        self.fidelity = avg_A**2/(avg_A2+epsilon)
+        self.fidelity = avg_A**2/(samples*avg_A2+epsilon)
 
         # calculate cost and its gradient
-        self.cost /= self.supervised_num_samples
-        self.gradient /= self.supervised_num_samples
-
-
-
-    ''' this will be useful for fidelity training
-    def estimate_gradient_nonint_overlap(self):
-        """estimate gradient of overlap integral between trial
-           wave function and non-interacting ground state"""
-           
-        num_accepted = 0
-        avg_A = 0.0
-        avg_A2 = 0.0
-        self.fidelity = 0.0
-
-        # let sampler to reach equilibrium
-        fraction_skip = 0.2
-        num_skip_samples = int(fraction_skip*self.num_samples)
-        num_effective_samples = self.num_samples-num_skip_samples
-        for sample in range(num_skip_samples):
-            accepted = self.sampler.sample()
-            
-        # for debugging
-        avg_position = 0.0
+        self.cost /= samples
+        self.gradient /= samples
         
-        # prevent division by zero
-        epsilon = 1e-8
-        
-        # take samples to estimate gradient of overlap
-        for sample in range(num_effective_samples):
-            
-            # count accepted samples
-            accepted = self.sampler.sample()
-            
-            avg_position += self.wavefunction.x[0]
-            
-            if accepted:
-                num_accepted += 1
-            
-            # calculate ratio of wave functions A and gradient of trial wave function
-            A = self.hamiltonian.nonint_gs_wavefunction(self.wavefunction.x)/ \
-                (self.wavefunction.calc_psi(self.wavefunction.x)+epsilon)
-            #print("top = ", self.hamiltonian.nonint_gs_wavefunction(self.wavefunction.x))
-            #print("bottom = ", self.wavefunction.calc_psi(self.wavefunction.x))
-            #print("position = ", self.wavefunction.x)
-            gradient_logpsi = self.wavefunction.calc_gradient_logpsi(self.wavefunction.x)
-            
-            # add up values for expectation values
-            avg_A += A
-            avg_A2 += A**2
-            avg_gradient_logpsi += gradient_logpsi
-            avg_A_gradient_logpsi += A*gradient_logpsi
-        
-        # calculate expectivation values
-        avg_A /= num_effective_samples
-        avg_A2 /= num_effective_samples
-        avg_gradient_logpsi /= num_effective_samples
-        avg_A_gradient_logpsi /= num_effective_samples
-        
-        # calculate ratio accepted
-        self.ratio_accepted = float(num_accepted)/num_effective_samples
-        
-        # calculate overlap integral and its gradient
-        self.overlap = avg_A**2/(avg_A2+epsilon)
-        self.gradient = 2.0*self.overlap*(avg_A_gradient_logpsi/(avg_A+epsilon)-avg_gradient_logpsi)
-        
-        print("avg position = ", avg_position/num_effective_samples)
-        
-    '''
             
 
-    def estimate_gradient_local_energy(self):
+    def calc_local_energy_gradient(self):
         """estimate gradient of average local energy
            with respect to wave function parameters"""
 
@@ -250,6 +235,7 @@ class VariationalMonteCarlo:
         num_effective_samples = self.num_samples-num_skip_samples
         for sample in range(num_skip_samples):
             accepted = self.sampler.sample()
+
             
         # take samples to estimate gradient of local energy
         for sample in range(num_effective_samples):

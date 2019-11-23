@@ -61,7 +61,7 @@ class ImportanceSampling:
         return accepted
         
 
-    def get_trial_sample(self, option):
+    def get_trial_sample(self):
         """kick one random particle using quantum force to get new positions"""
         self.trial_x = self.wavefunction.x.copy()
         self.rand_p = np.random.randint(self.wavefunction.N)
@@ -71,7 +71,7 @@ class ImportanceSampling:
     
         
     
-    def calc_acceptance_ratio(self, option):
+    def calc_acceptance_ratio(self):
         """acceptance ratio for importance sampling algorithm"""
         
         psi = self.wavefunction.calc_psi(self.wavefunction.x)
