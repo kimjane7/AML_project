@@ -1,7 +1,6 @@
 import time
 import os.path
 import numpy as np
-import seaborn as sns
 import matplotlib.pyplot as plt
 
 class VariationalMonteCarlo:
