@@ -13,11 +13,10 @@ def main():
     # model parameters
     num_particles = 2
     num_hidden = 20
-    interaction_param = 0.5
+    interaction_param = 0.0
     ramp_up_speed = 0.001
     time_step = 0.001
     num_samples = 500000
-    reg_param = 0.001
 
 
     # initialize objects
@@ -25,7 +24,8 @@ def main():
     Hamiltonian = CalogeroSutherland(WaveFunction, interaction_param, ramp_up_speed)
     Sampler = ImportanceSampling(Hamiltonian, time_step)
     Optimizer = Adam(WaveFunction, 0.01)
-    VMC = VariationalMonteCarlo(Optimizer, Sampler, num_samples, reg_param)
+    VMC = VariationalMonteCarlo(Optimizer, Sampler, num_samples)
+    
     
     # run optimization
     VMC.minimize_energy()
