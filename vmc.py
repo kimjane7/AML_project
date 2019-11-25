@@ -21,7 +21,7 @@ class VariationalMonteCarlo:
         self.supervised_state_file = 'states/supervised_'+tag+'.txt'
         self.supervised_data_file = 'data/supervised_'+tag+'.txt'
         
-        self.reinforcement_state_file = 'states/reinforcement'+tag+'.txt'
+        self.reinforcement_state_file = 'states/reinforcement_'+tag+'.txt'
         self.reinforcement_data_file = 'data/reinforcement_'+tag+'_samples'+str(self.num_samples) \
                                         +'_nu'+str(self.hamiltonian.nu)+'.txt'
         
@@ -142,7 +142,7 @@ class VariationalMonteCarlo:
         # snapshots of state
         statefile = open(self.reinforcement_state_file, 'w')
         iter = 0
-        snapshots = [0, 10, 100, 200, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000]
+        snapshots = [0, 5, 10, 50, 100, 200, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000]
         
         print('Using {0} samples...'.format(self.num_samples))
         
@@ -150,6 +150,7 @@ class VariationalMonteCarlo:
         
             # write snapshots
             if snapshots[iter] == cycles:
+                print('Printing snapshot at cycle {0}...'.format(cycles))
                 param_str = ''
                 for param in self.wavefunction.alpha:
                     param_str += str(param)+' '
@@ -164,7 +165,7 @@ class VariationalMonteCarlo:
             cycles += 1
             
             # write progress
-            datafile.write('{:<10d}{:<20.5f}{:<20.5f}{:<20.5f}{:<20.5f}{:<20.15}'.format(cycles, self.fidelity, self.avg_EL, self.var_EL, np.linalg.norm(self.gradient), self.ratio_accepted))
+            datafile.write('{:<10d}{:<20.5f}{:<20.5f}{:<20.5f}{:<20.5f}{:<20.15}\n'.format(cycles, self.fidelity, self.avg_EL, self.var_EL, np.linalg.norm(self.gradient), self.ratio_accepted))
         
         datafile.close()
         statefile.close()
@@ -230,6 +231,7 @@ class VariationalMonteCarlo:
         
         
         # let sampler to reach equilibrium
+        self.wavefunction.x = np.random.normal(0, 0.1, self.wavefunction.N)
         fraction_skip = 0.2
         num_skip_samples = int(fraction_skip*self.num_samples)
         num_effective_samples = self.num_samples-num_skip_samples

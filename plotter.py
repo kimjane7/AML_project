@@ -15,7 +15,7 @@ mpl.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}']
 
 def plot_supervised_snapshots_N1(M):
 
-    file = 'initialstates/N1_M'+str(M)+'.txt'
+    file = 'states/supervised_N1_M'+str(M)+'.txt'
     statefile = open(file, 'r')
     snapshots = statefile.readlines()
     statefile.close()
@@ -38,7 +38,7 @@ def plot_supervised_snapshots_N1(M):
         for i in range(num_points):
             psi[i] = WaveFunction.calc_psi([x[i]])
             
-        plt.plot(x, psi, color=color, linewidth=3, label=str(snapshot.split()[0]))
+        plt.plot(x, psi, color=color, linewidth=3, label=str(snapshot.split()[0])+' updates')
     
     psi_nonint = np.zeros(num_points)
     for i in range(num_points):
@@ -52,6 +52,9 @@ def plot_supervised_snapshots_N1(M):
     plt.title(r'Progression of supervised learning of initial parameters using '+str(M)+' hidden units', fontsize=16)
     plt.legend(loc='upper right', fontsize=14)
     plt.savefig('figures/N1_M'+str(M)+'_supervised_snapshots.pdf', format='pdf')
+    
+    
+    
 
 def plot_supervised_snapshots(N, M):
     
@@ -59,25 +62,27 @@ def plot_supervised_snapshots(N, M):
         plot_supervised_snapshots_N1(M)
         
     else:
-        file = 'initialstates/N'+str(N)+'_M'+str(M)+'.txt'
+        file = 'states/supervised_N'+str(N)+'_M'+str(M)+'.txt'
         statefile = open(file, 'r')
         snapshots = statefile.readlines()
         statefile.close()
         
         WaveFunction = FeedForwardNeuralNetwork(N, M)
         Hamiltonian = CalogeroSutherland(WaveFunction, 0.0, 0.0)
-        Sampler = ImportanceSampling(Hamiltonian, 0.001)
+        Sampler = ImportanceSampling(Hamiltonian, 0.005)
         
         plt.figure(figsize=(12,8))
         sns.set_style("whitegrid")
         colors = cm.rainbow_r(np.linspace(0, 1, len(snapshots)))
-        num_samples = 10000
-        num_skip = int(0.1*num_samples)
+        num_samples = 400000
+        num_skip = 4000
     
-        for snapshot, color in zip(snapshots, colors):
+        index = [0, 3, 4, 5, 7, 9, 13]
+        for snapshot, color in zip([snapshots[i] for i in index], [colors[i] for i in index]):
             
             WaveFunction.alpha = np.array(snapshot.split()[1:]).astype(np.float)
             WaveFunction.separate()
+            WaveFunction.x = np.random.normal(0, 1/np.sqrt(2), N)
             
             for sample in range(num_skip):
                 accepted = Sampler.sample()
@@ -86,16 +91,19 @@ def plot_supervised_snapshots(N, M):
             for sample in range(num_samples):
                 accepted = Sampler.sample()
                 x[N*sample:N*(sample+1)] = WaveFunction.x
-            sns.kdeplot(x, shade=True, color=color)
+                
+            sns.kdeplot(x, shade=True, linewidth=2, color=color, label=str(snapshot.split()[0])+' updates')
         
-        x = np.random.normal(N*num_samples)
-        sns.kdeplot(x, shade=False, color='k', linestyle='dashed')
         
-        plt.ylim(-0.1,1.5)
-        plt.xlim(-5,5)
+        x = np.random.normal(0, 1/np.sqrt(2), N*num_samples)
+        sns.kdeplot(x, shade=False, linewidth=3, color='k', linestyle='dashed', label=r'$|\Psi_0^{non\text{-}int}(x)|^2$')
+        
+
+        plt.ylim(-0.1,0.7)
+        plt.xlim(-4,4)
         plt.ylabel(r'Probability distribution $|\Psi(x)|^2$', fontsize=14)
-        plt.xlabel(r'Positions $x$ of '+str(N)+' particles', fontsize=14)
-        plt.title(r'Progression of supervised learning of initial parameters for '+str(N)+' particles using '+str(M)+' hidden units', fontsize=16)
+        plt.xlabel(r'Positions $x$', fontsize=14)
+        plt.title('Supervised learning of wave function for the non-interacting case', fontsize=16)
         plt.legend(loc='upper right')
         plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_supervised_snapshots.pdf', format='pdf')
 
