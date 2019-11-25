@@ -51,7 +51,7 @@ def plot_supervised_snapshots_N1(M):
     plt.xlabel(r'Position $x$', fontsize=14)
     plt.title(r'Supervised learning of wave function for the non-interacting case', fontsize=16)
     plt.legend(loc='upper right', fontsize=14)
-    plt.savefig('figures/N1_M'+str(M)+'_supervised_snapshots.pdf', format='pdf')
+    plt.savefig('figures/N1_M'+str(M)+'_supervised_snapshots.png', format='png')
     
     
     
@@ -105,6 +105,7 @@ def plot_supervised_snapshots(N, M):
         plt.xlabel(r'Positions $x$', fontsize=14)
         plt.title('Supervised learning of wave function for the non-interacting case', fontsize=16)
         plt.legend(loc='upper right')
-        plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_supervised_snapshots.pdf', format='pdf')
+        plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_supervised_snapshots.png', format='png')
 
 plot_supervised_snapshots(1,10)
+plot_supervised_snapshots(2,20)
