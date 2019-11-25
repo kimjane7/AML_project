@@ -18,10 +18,10 @@ class VariationalMonteCarlo:
         # file names
         tag = 'N'+str(self.wavefunction.N)+'_M'+str(self.wavefunction.M)
         
-        self.supervised_state_file = 'states/'+tag+'.txt'
+        self.supervised_state_file = 'states/supervised_'+tag+'.txt'
         self.supervised_data_file = 'data/supervised_'+tag+'.txt'
         
-        self.reinforcement_state_file = 'states/'+tag+'.txt'
+        self.reinforcement_state_file = 'states/reinforcement'+tag+'.txt'
         self.reinforcement_data_file = 'data/reinforcement_'+tag+'_samples'+str(self.num_samples) \
                                         +'_nu'+str(self.hamiltonian.nu)+'.txt'
         

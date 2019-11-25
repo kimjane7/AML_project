@@ -13,7 +13,7 @@ def main():
     # model parameters
     num_particles = 2
     num_hidden = 20
-    interaction_param = 0.0
+    interaction_param = 0.5
     ramp_up_speed = 0.001
     time_step = 0.001
     num_samples = 500000
