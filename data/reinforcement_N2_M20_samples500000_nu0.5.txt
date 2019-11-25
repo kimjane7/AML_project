@@ -1,1 +1,0 @@
-# cycles  fidelity      MSE           ||MSE gradient||    
