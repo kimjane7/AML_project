@@ -48,8 +48,8 @@ def plot_supervised_snapshots_N1(M):
     plt.ylim(-0.1,1.5)
     plt.xlim(-5,5)
     plt.ylabel(r'Ground state wave function $\Psi(x)$', fontsize=14)
-    plt.xlabel(r'Position $x$ of one particle', fontsize=14)
-    plt.title(r'Progression of supervised learning of initial parameters using '+str(M)+' hidden units', fontsize=16)
+    plt.xlabel(r'Position $x$', fontsize=14)
+    plt.title(r'Supervised learning of wave function for the non-interacting case', fontsize=16)
     plt.legend(loc='upper right', fontsize=14)
     plt.savefig('figures/N1_M'+str(M)+'_supervised_snapshots.pdf', format='pdf')
     
@@ -107,4 +107,4 @@ def plot_supervised_snapshots(N, M):
         plt.legend(loc='upper right')
         plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_supervised_snapshots.pdf', format='pdf')
 
-plot_supervised_snapshots(2,20)
+plot_supervised_snapshots(1,10)
