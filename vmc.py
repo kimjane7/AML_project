@@ -21,7 +21,8 @@ class VariationalMonteCarlo:
         self.supervised_state_file = 'states/supervised_'+tag+'.txt'
         self.supervised_data_file = 'data/supervised_'+tag+'.txt'
         
-        self.reinforcement_state_file = 'states/reinforcement_'+tag+'.txt'
+        self.reinforcement_state_file = 'states/reinforcement_'+tag+'_samples'+str(self.num_samples) \
+        +'_nu'+str(self.hamiltonian.nu)+'.txt'
         self.reinforcement_data_file = 'data/reinforcement_'+tag+'_samples'+str(self.num_samples) \
                                         +'_nu'+str(self.hamiltonian.nu)+'.txt'
         
@@ -142,7 +143,7 @@ class VariationalMonteCarlo:
         # snapshots of state
         statefile = open(self.reinforcement_state_file, 'w')
         iter = 0
-        snapshots = [1000*i for i in range(31)]
+        snapshots = [1000*i for i in range(51)]
         
         print('Using {0} samples...'.format(self.num_samples))
         
