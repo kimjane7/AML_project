@@ -8,9 +8,19 @@ import matplotlib as mpl
 import matplotlib.cm as cm
 from matplotlib import rc
 
-plt.rc('font', family='serif')
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
 mpl.rcParams['text.usetex'] = True
 mpl.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}']
+
+
+def plot_reinforcement_EL(N, M):
+
+    file = 'data/reinforcement'
+    
+plot_reinforcement_EL(2,20):
+    
+    
 
 
 def plot_supervised_snapshots_N1(M):
@@ -49,7 +59,7 @@ def plot_supervised_snapshots_N1(M):
     plt.xlim(-5,5)
     plt.ylabel(r'Ground state wave function $\Psi(x)$', fontsize=14)
     plt.xlabel(r'Position $x$', fontsize=14)
-    plt.title(r'Supervised learning of wave function for the non-interacting case', fontsize=16)
+    plt.title(r'Supervised learning of the wave function for the non-interacting case', fontsize=16)
     plt.legend(loc='upper right', fontsize=14)
     plt.savefig('figures/N1_M'+str(M)+'_supervised_snapshots.png', format='png')
     
@@ -74,8 +84,8 @@ def plot_supervised_snapshots(N, M):
         plt.figure(figsize=(12,8))
         sns.set_style("whitegrid")
         colors = cm.rainbow_r(np.linspace(0, 1, len(snapshots)))
-        num_samples = 400000
-        num_skip = 4000
+        num_samples = 300000
+        num_skip = 3000
     
         index = [0, 3, 4, 5, 7, 9, 13]
         for snapshot, color in zip([snapshots[i] for i in index], [colors[i] for i in index]):
@@ -103,9 +113,8 @@ def plot_supervised_snapshots(N, M):
         plt.xlim(-4,4)
         plt.ylabel(r'Probability distribution $|\Psi(x)|^2$', fontsize=14)
         plt.xlabel(r'Positions $x$', fontsize=14)
-        plt.title('Supervised learning of wave function for the non-interacting case', fontsize=16)
+        plt.title('Supervised learning of the wave function for the non-interacting case', fontsize=16)
         plt.legend(loc='upper right')
         plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_supervised_snapshots.png', format='png')
 
-plot_supervised_snapshots(1,10)
-plot_supervised_snapshots(2,20)
+
