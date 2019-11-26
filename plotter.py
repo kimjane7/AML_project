@@ -14,11 +14,41 @@ mpl.rcParams['text.usetex'] = True
 mpl.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}']
 
 
-def plot_reinforcement_EL(N, M):
+def smooth_avg(x, y, n):
 
-    file = 'data/reinforcement'
+    num_points = int(np.ceil(len(x)/float(n)))
+    X = np.zeros(num_points)
+    Y = np.zeros(num_points)
     
-plot_reinforcement_EL(2,20):
+    for i in range(num_points-1):
+        X[i] = x[int((0.5+i)*n)]
+        Y[i] = y[i*n:(i+1)*n].mean()
+    X[-1] = x[-1]
+    Y[-1] = y[(num_points-1)*n:].mean()
+    
+    return X, Y
+    
+    
+    
+    
+
+
+def plot_reinforcement_EL(N, M, samples, nu):
+
+    file = 'data/reinforcement_N'+str(N)+'_M'+str(M)+'_samples'+str(samples)+'_nu'+str(nu)+'.txt'
+    data = np.loadtxt(file)
+    
+    cycle = data[:,0]
+    fidelity = data[:,1]
+    EL = data[:,2]
+    EL_var = data[:,3]
+    
+    X, Y = smooth_avg(cycle, EL, 1000)
+    
+    plt.plot(X, Y)
+    plt.show()
+    
+plot_reinforcement_EL(2, 20, 10000, 0.5)
     
     
 
