@@ -143,7 +143,7 @@ class VariationalMonteCarlo:
         # snapshots of state
         statefile = open(self.reinforcement_state_file, 'w')
         iter = 0
-        snapshots = [1000*i for i in range(51)]
+        snapshots = [1000*i for i in range(61)]
         
         print('Using {0} samples...'.format(self.num_samples))
         
