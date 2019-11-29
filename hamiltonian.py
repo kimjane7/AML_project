@@ -25,14 +25,8 @@ class CalogeroSutherland:
             for q in range(p+1, self.wavefunction.N):
                 sum += 1.0/(x[p]-x[q])**2
         
-        # ramp up nu at each iteration until desired value of nu is reached
-        if self.gamma*iteration > 1.0:
-            nu = self.nu
-        else:
-            nu = self.gamma*iteration*self.nu
-        
-        EL += nu*(nu-1.0)*sum
-        
+        EL = min((self.gamma*iteration)**2, self.nu*(self.nu-1.0)*sum)
+    
         return EL
     
 
@@ -49,12 +43,6 @@ class CalogeroSutherland:
             for q in range(p+1, self.wavefunction.N):
                 psi *= (abs(x[p]-x[q]))**self.nu
         return psi
-    
-    def exact_qforce(self, x, p):
-        """quantum force on pth particle for exact interacting case"""
-        print("need to finish exact qforce calculations")
-        return 0
-    
     
     def nonint_gs_wavefunction(self, x):
         """ground state wave function for 1D harmonic oscillator"""

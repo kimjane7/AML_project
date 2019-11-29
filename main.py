@@ -13,10 +13,10 @@ def main():
     # model parameters
     num_particles = 2
     num_hidden = 20
-    interaction_param = 0.5
+    interaction_param = 2.0
     ramp_up_speed = 0.001
     time_step = 0.001
-    num_samples = 30000
+    num_samples = 10000
 
 
     # initialize objects
