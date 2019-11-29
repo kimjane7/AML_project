@@ -16,14 +16,14 @@ def main():
     interaction_param = 0.5
     ramp_up_speed = 0.001
     time_step = 0.001
-    num_samples = 20000
+    num_samples = 30000
 
 
     # initialize objects
     WaveFunction = FeedForwardNeuralNetwork(num_particles, num_hidden)
     Hamiltonian = CalogeroSutherland(WaveFunction, interaction_param, ramp_up_speed)
     Sampler = ImportanceSampling(Hamiltonian, time_step)
-    Optimizer = Adam(WaveFunction, 0.01)
+    Optimizer = Adam(WaveFunction)
     VMC = VariationalMonteCarlo(Optimizer, Sampler, num_samples)
     
     

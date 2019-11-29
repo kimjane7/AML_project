@@ -43,7 +43,7 @@ def plot_reinforcement_EL(N, M, samples, nu):
     EL = data[:,2]
     EL_var = data[:,3]
     
-    X, Y = smooth_avg(cycle, EL, 1000)
+    X, Y = smooth_avg(cycle, EL, 200)
     
     plt.plot(X, Y)
     plt.show()

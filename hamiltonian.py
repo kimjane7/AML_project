@@ -24,10 +24,14 @@ class CalogeroSutherland:
         for p in range(self.wavefunction.N-1):
             for q in range(p+1, self.wavefunction.N):
                 sum += 1.0/(x[p]-x[q])**2
-        if self.gamma*iteration**2 < sum:
-            EL += self.gamma*iteration**2
+        
+        # ramp up nu at each iteration until desired value of nu is reached
+        if self.gamma*iteration > 1.0:
+            nu = self.nu
         else:
-            EL += self.nu*(self.nu-1.0)*sum
+            nu = self.gamma*iteration*self.nu
+        
+        EL += nu*(nu-1.0)*sum
         
         return EL
     
