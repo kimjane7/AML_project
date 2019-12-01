@@ -2,11 +2,11 @@ import numpy as np
 from wavefunction import FeedForwardNeuralNetwork
 from hamiltonian import CalogeroSutherland
 from sampler import ImportanceSampling
-import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.cm as cm
 from matplotlib import rc
+import seaborn as sns
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -20,16 +20,16 @@ def smooth_avg(x, y, n):
     X = np.zeros(num_points)
     Y = np.zeros(num_points)
     
-    for i in range(num_points-1):
-        X[i] = x[int((0.5+i)*n)]
-        Y[i] = y[i*n:(i+1)*n].mean()
+    X[0] = x[0]
+    Y[0] = y[0]
+    
+    for i in range(1,num_points):
+        X[i] = x[int(i*n)]
+        Y[i] = y[(i-1)*n:i*n].mean()
     X[-1] = x[-1]
     Y[-1] = y[(num_points-1)*n:].mean()
     
     return X, Y
-    
-    
-    
     
 
 
@@ -42,15 +42,81 @@ def plot_reinforcement_EL(N, M, samples, nu):
     fidelity = data[:,1]
     EL = data[:,2]
     EL_var = data[:,3]
+    X, Y = smooth_avg(cycle, EL, 100)
+    E0 = 0.5*N+0.5*nu*N*(N-1)
     
-    X, Y = smooth_avg(cycle, EL, 200)
     
-    plt.plot(X, Y)
+    plt.figure(figsize=(8,6))
+    plt.plot(cycle, EL, color='royalblue', alpha=0.3, linewidth=0.1)
+    plt.plot([0], [0], color='royalblue', alpha=0.3, linewidth=1.0, label='Raw data')
+    plt.plot(X, Y, color='royalblue', label='Average over 100 iterations')
+    plt.axhline(E0, color='k', label='True ground state energy')
+    plt.axhline(0.5*N, color='k', linestyle='dashed', label='Non-interacting ground state energy')
+    plt.xlim(0, cycle[-1])
+    plt.ylim(0.75,8.25)
+    plt.xlabel('Number of iterations')
+    plt.ylabel(r'Average local energy $\langle E_L \rangle$')
+    plt.title(r'Ground state energy approximation for $N$ = '+str(N)+r'$, \ \nu$ = '+str(nu))
+    plt.legend(loc='upper right')
+    plt.savefig('figures/EL_N'+str(N)+'_M'+str(M)+'_samples'+str(samples)+'_nu'+str(nu)+'.pdf', format='pdf')
+    
+#plot_reinforcement_EL(2, 20, 10000, 2.0)
+
+
+def plot_reinforcement_snapshots(N, M, samples, nu):
+
+    file = 'states/reinforcement_N'+str(N)+'_M'+str(M)+'_samples'+str(samples)+'_nu'+str(nu)+'.txt'
+    statefile = open(file, 'r')
+    snapshots = statefile.readlines()
+    statefile.close()
+    
+    WaveFunction = FeedForwardNeuralNetwork(N, M)
+    Hamiltonian = CalogeroSutherland(WaveFunction, nu, 0.0)
+    Sampler = ImportanceSampling(Hamiltonian, 0.001)
+    
+    plt.figure(figsize=(12,8))
+    sns.set_style("whitegrid")
+    colors = cm.rainbow_r(np.linspace(0, 1, len(snapshots)))
+    num_samples = 10000000
+    num_skip = 3000
+
+    index = [0, 3, 10, 20, 30, len(snapshots)-1]
+    for snapshot, color in zip(snapshots[-2:], colors[-2:]):
+    #for snapshot, color in zip([snapshots[i] for i in index], [colors[i] for i in index]):
+        
+        WaveFunction.alpha = np.array(snapshot.split()[1:]).astype(np.float)
+        WaveFunction.separate()
+        WaveFunction.x = np.random.normal(0, 1/np.sqrt(2), N)
+        
+        for sample in range(num_skip):
+            accepted = Sampler.sample()
+            
+        x = np.empty(N*num_samples)
+        for sample in range(num_samples):
+            accepted = Sampler.sample()
+            x[N*sample:N*(sample+1)] = WaveFunction.x
+            
+        sns.kdeplot(x, shade=True, linewidth=2, color=color, label=str(snapshot.split()[0])+' updates')
+        
+    x = np.empty(N*num_samples)
+    for sample in range(num_samples):
+        accepted = Sampler.exact_sample()
+        x[N*sample:N*(sample+1)] = WaveFunction.x
+    
+    sns.kdeplot(x, shade=False, linewidth=3, color='k', linestyle='dashed', label=r'$|\Psi_0^{exact}(x)|^2$')
+    
+    
+
+    plt.ylim(-0.1,0.7)
+    plt.xlim(-4,4)
+    plt.ylabel(r'Probability distribution $|\Psi(x)|^2$', fontsize=14)
+    plt.xlabel(r'Positions $x$', fontsize=14)
+    plt.title('Reinforcement learning of the wave function for the interacting case', fontsize=16)
+    plt.legend(loc='upper right')
     plt.show()
-    
-plot_reinforcement_EL(2, 20, 10000, 0.5)
-    
-    
+    #plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_supervised_snapshots.png', format='png')
+
+plot_reinforcement_snapshots(2, 20, 10000, 2.0)
 
 
 def plot_supervised_snapshots_N1(M):
@@ -117,8 +183,9 @@ def plot_supervised_snapshots(N, M):
         num_samples = 300000
         num_skip = 3000
     
-        index = [0, 3, 4, 5, 7, 9, 13]
-        for snapshot, color in zip([snapshots[i] for i in index], [colors[i] for i in index]):
+        #index = [0, 3, 4, 5, 7, 9, 13]
+        for snapshot, color in zip(snapshots, colors):
+        #for snapshot, color in zip([snapshots[i] for i in index], [colors[i] for i in index]):
             
             WaveFunction.alpha = np.array(snapshot.split()[1:]).astype(np.float)
             WaveFunction.separate()
@@ -145,6 +212,8 @@ def plot_supervised_snapshots(N, M):
         plt.xlabel(r'Positions $x$', fontsize=14)
         plt.title('Supervised learning of the wave function for the non-interacting case', fontsize=16)
         plt.legend(loc='upper right')
-        plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_supervised_snapshots.png', format='png')
+        plt.show()
+        #plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_supervised_snapshots.png', format='png')
 
 
+#plot_supervised_snapshots(2, 20)

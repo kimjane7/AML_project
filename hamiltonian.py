@@ -24,10 +24,20 @@ class CalogeroSutherland:
         for p in range(self.wavefunction.N-1):
             for q in range(p+1, self.wavefunction.N):
                 sum += 1.0/(x[p]-x[q])**2
-        
-        EL = min((self.gamma*iteration)**2, self.nu*(self.nu-1.0)*sum)
+
+        EL += min((self.gamma*iteration)**2, self.nu*(self.nu-1.0)*sum)
     
         return EL
+        
+    def calc_qforce(self, x, p):
+        
+        F = 0.0
+        
+        for i in range(self.wavefunction.N):
+            if i != p:
+                F += (x[p]-x[i])/abs(x[p]-x[i])**2
+                
+        return 2*self.nu*F
     
 
     def exact_gs_energy(self):

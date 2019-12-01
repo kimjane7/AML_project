@@ -14,7 +14,7 @@ def main():
     num_particles = 2
     num_hidden = 20
     interaction_param = 2.0
-    ramp_up_speed = 0.001
+    ramp_up_speed = 0.01
     time_step = 0.001
     num_samples = 10000
 

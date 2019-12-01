@@ -59,6 +59,25 @@ class ImportanceSampling:
             accepted = True
             self.wavefunction.x = np.sort(self.trial_x)
         return accepted
+    
+    def exact_sample(self):
+    
+        self.get_exact_sample()
+        accepted = False
+        if(np.random.sample() < self.calc_exact_acceptance_ratio()):
+            accepted = True
+            self.wavefunction.x = np.sort(self.trial_x)
+        return accepted
+    
+    
+    
+    def get_exact_sample(self):
+        self.trial_x = self.wavefunction.x.copy()
+        self.rand_p = np.random.randint(self.wavefunction.N)
+        self.qforce = self.hamiltonian.calc_qforce(self.wavefunction.x, self.rand_p)
+        self.trial_x[self.rand_p] += self.diff_const*self.timestep*self.qforce \
+                                     + np.random.normal()*np.sqrt(self.timestep)
+        
         
 
     def get_trial_sample(self):
@@ -78,6 +97,19 @@ class ImportanceSampling:
         trial_psi = self.wavefunction.calc_psi(self.trial_x)
         
         self.trial_qforce = self.wavefunction.calc_qforce(self.trial_x, self.rand_p)
+        
+        greens = 0.5*(self.wavefunction.x[self.rand_p]-self.trial_x[self.rand_p])*(self.trial_qforce+self.qforce) \
+                 + 0.25*self.diff_const*self.timestep*(self.qforce**2-self.trial_qforce**2)
+            
+        return np.exp(greens)*(trial_psi/psi)**2
+        
+    def calc_exact_acceptance_ratio(self):
+        """acceptance ratio for importance sampling algorithm"""
+        
+        psi = self.hamiltonian.exact_gs_wavefunction(self.wavefunction.x)
+        trial_psi = self.hamiltonian.exact_gs_wavefunction(self.trial_x)
+        
+        self.trial_qforce = self.hamiltonian.calc_qforce(self.trial_x, self.rand_p)
         
         greens = 0.5*(self.wavefunction.x[self.rand_p]-self.trial_x[self.rand_p])*(self.trial_qforce+self.qforce) \
                  + 0.25*self.diff_const*self.timestep*(self.qforce**2-self.trial_qforce**2)

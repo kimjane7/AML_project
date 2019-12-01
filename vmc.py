@@ -63,7 +63,6 @@ class VariationalMonteCarlo:
             end = time.time()
             print('Done in {:.3f} seconds.'.format(end-start))
 
-
     def train_nonint_case(self):
         """supervised training of initial weights and biases
            of wave function using known wave function for
@@ -74,7 +73,7 @@ class VariationalMonteCarlo:
         patience = 50
         min_gradient = 1
         min_gradient_cycles = 0
-        min_samples = 20000*self.wavefunction.N
+        min_samples = 30000
         samples = min_samples
 
         # training progress
@@ -84,7 +83,7 @@ class VariationalMonteCarlo:
         # snapshots of state
         statefile = open(self.supervised_state_file, 'w')
         iter = 0
-        snapshots = [0, 10, 100, 200, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000]
+        snapshots = [0, 10, 20, 50, 100, 200, 500, 800]+[1000*i for i in range(1, 51)]
         
         print('Starting with {0} samples...'.format(samples))
 
@@ -92,6 +91,7 @@ class VariationalMonteCarlo:
         
             # write snapshots
             if snapshots[iter] == cycles:
+                print('Writing snapshot to file at cycle {0}...'.format(cycles))
                 param_str = ''
                 for param in self.wavefunction.alpha:
                     param_str += str(param)+' '
@@ -101,8 +101,12 @@ class VariationalMonteCarlo:
                     optimize = False
         
             # get data, calculate cost, update parameters
-            X = np.concatenate((np.random.normal(0.0, 1.0, (int(0.9*samples), self.wavefunction.N)), \
-                                np.random.uniform(-10.0, 10.0, (int(0.1*samples), self.wavefunction.N))))
+            num_norm_samples = int(0.9*samples*self.wavefunction.N)
+            norm_samples = np.random.normal(0.0, 1.0, num_norm_samples)
+            unif_samples = np.random.uniform(-10.0, 10.0, samples*self.wavefunction.N-num_norm_samples)
+            X = np.concatenate([norm_samples, unif_samples])
+            np.random.shuffle(X)
+            X = X.reshape(samples, self.wavefunction.N)
             self.calc_cost_gradient(X)
             self.optimizer.update_params(self.gradient)
             cycles += 1
@@ -116,14 +120,13 @@ class VariationalMonteCarlo:
                 min_gradient_cycles = cycles
                 
             elif cycles-min_gradient_cycles > patience:
-                samples += min_samples
+                samples += 20000
                 min_gradient = np.linalg.norm(self.gradient)
                 min_gradient_cycles = cycles
                 print('Increasing number of samples to {0} at cycle {1}...'.format(samples, cycles))
         
         datafile.close()
         statefile.close()
-
 
 
     def train_int_case(self):
@@ -138,12 +141,12 @@ class VariationalMonteCarlo:
         
         # training progress
         datafile = open(self.reinforcement_data_file, 'w')
-        datafile.write('{:<10s}{:<20s}{:<20s}{:<20s}{:<20s}{:<20s}\n'.format('# cycles', 'fidelity', 'EL avg', 'EL var', '||MSE gradient||', 'ratio accepted samples'))
+        datafile.write('{:<10s}{:<20s}{:<20s}{:<20s}{:<20s}{:<20s}\n'.format('# cycles', 'fidelity', 'EL avg', 'EL var', '||EL gradient||', 'ratio accepted samples'))
         
         # snapshots of state
         statefile = open(self.reinforcement_state_file, 'w')
         iter = 0
-        snapshots = [1000*i for i in range(61)]
+        snapshots = [0, 10, 20, 50, 100, 200, 300, 400, 500, 800]+[1000*i for i in range(1,51)]
         
         print('Using {0} samples...'.format(self.num_samples))
         
@@ -249,7 +252,7 @@ class VariationalMonteCarlo:
                 num_accepted += 1
             
             # calculate local energy and gradient of trial wave function
-            EL = self.hamiltonian.calc_local_energy(self.wavefunction.x, self.optimizer.t)
+            EL = self.hamiltonian.calc_local_energy(self.wavefunction.x, self.optimizer.t-1)
             gradient_logpsi = self.wavefunction.calc_gradient_logpsi(self.wavefunction.x)
             
             # calculate trial and target wave functions
