@@ -11,12 +11,12 @@ from vmc import VariationalMonteCarlo
 def main():
 
     # model parameters
-    num_particles = 2
+    num_particles = 5
     num_hidden = 20
     interaction_param = 2.0
     ramp_up_speed = 0.01
     time_step = 0.001
-    num_samples = 10000
+    num_samples = 20000
 
 
     # initialize objects

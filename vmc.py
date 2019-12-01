@@ -73,7 +73,7 @@ class VariationalMonteCarlo:
         patience = 50
         min_gradient = 1
         min_gradient_cycles = 0
-        min_samples = 30000
+        min_samples = 40000
         samples = min_samples
 
         # training progress

@@ -42,16 +42,19 @@ def plot_reinforcement_EL(N, M, samples, nu):
     fidelity = data[:,1]
     EL = data[:,2]
     EL_var = data[:,3]
-    X, Y = smooth_avg(cycle, EL, 100)
     E0 = 0.5*N+0.5*nu*N*(N-1)
+    print("True ground state energy: E0 = {0}".format(E0))
     
+    X, Y = smooth_avg(cycle, EL, 100)
+    X, Y_var = smooth_avg(cycle, EL_var, 100)
+    print("Final ground state energy prediction: E = {0}, variance = {1}".format(Y[-1], Y_var[-1]))
     
     plt.figure(figsize=(8,6))
     plt.plot(cycle, EL, color='royalblue', alpha=0.3, linewidth=0.1)
     plt.plot([0], [0], color='royalblue', alpha=0.3, linewidth=1.0, label='Raw data')
-    plt.plot(X, Y, color='royalblue', label='Average over 100 iterations')
-    plt.axhline(E0, color='k', label='True ground state energy')
-    plt.axhline(0.5*N, color='k', linestyle='dashed', label='Non-interacting ground state energy')
+    plt.plot(X, Y, color='royalblue', linewidth=0.8, label='Average over 100 iterations')
+    plt.axhline(E0, color='k', linewidth=0.8, label='True ground state energy')
+    plt.axhline(0.5*N, color='k', linewidth=0.8, linestyle='dashed', label='Non-interacting ground state energy')
     plt.xlim(0, cycle[-1])
     plt.ylim(0.75,8.25)
     plt.xlabel('Number of iterations')
@@ -60,7 +63,7 @@ def plot_reinforcement_EL(N, M, samples, nu):
     plt.legend(loc='upper right')
     plt.savefig('figures/EL_N'+str(N)+'_M'+str(M)+'_samples'+str(samples)+'_nu'+str(nu)+'.pdf', format='pdf')
     
-#plot_reinforcement_EL(2, 20, 10000, 2.0)
+plot_reinforcement_EL(2, 20, 10000, 2.0)
 
 
 def plot_reinforcement_snapshots(N, M, samples, nu):
@@ -116,7 +119,7 @@ def plot_reinforcement_snapshots(N, M, samples, nu):
     plt.show()
     #plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_supervised_snapshots.png', format='png')
 
-plot_reinforcement_snapshots(2, 20, 10000, 2.0)
+#plot_reinforcement_snapshots(2, 20, 10000, 2.0)
 
 
 def plot_supervised_snapshots_N1(M):
