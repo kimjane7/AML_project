@@ -63,7 +63,7 @@ def plot_reinforcement_EL(N, M, samples, nu):
     plt.legend(loc='upper right')
     plt.savefig('figures/EL_N'+str(N)+'_M'+str(M)+'_samples'+str(samples)+'_nu'+str(nu)+'.pdf', format='pdf')
     
-plot_reinforcement_EL(2, 20, 10000, 2.0)
+#plot_reinforcement_EL(2, 20, 10000, 2.0)
 
 
 def plot_reinforcement_snapshots(N, M, samples, nu):
@@ -80,16 +80,15 @@ def plot_reinforcement_snapshots(N, M, samples, nu):
     plt.figure(figsize=(12,8))
     sns.set_style("whitegrid")
     colors = cm.rainbow_r(np.linspace(0, 1, len(snapshots)))
-    num_samples = 10000000
-    num_skip = 3000
+    num_samples = 1000000
+    num_skip = 1000
 
-    index = [0, 3, 10, 20, 30, len(snapshots)-1]
-    for snapshot, color in zip(snapshots[-2:], colors[-2:]):
-    #for snapshot, color in zip([snapshots[i] for i in index], [colors[i] for i in index]):
+    index = [0, 10, 19, 39, -1]
+    for snapshot, color in zip([snapshots[i] for i in index], [colors[i] for i in index]):
         
         WaveFunction.alpha = np.array(snapshot.split()[1:]).astype(np.float)
         WaveFunction.separate()
-        WaveFunction.x = np.random.normal(0, 1/np.sqrt(2), N)
+        WaveFunction.x = np.random.normal(0, 1, N)
         
         for sample in range(num_skip):
             accepted = Sampler.sample()
@@ -101,7 +100,16 @@ def plot_reinforcement_snapshots(N, M, samples, nu):
             
         sns.kdeplot(x, shade=True, linewidth=2, color=color, label=str(snapshot.split()[0])+' updates')
         
+        num_samples += 1000000
+     
+    num_samples = 10000000
     x = np.empty(N*num_samples)
+    
+    WaveFunction.x = np.random.normal(0, 1, N)
+    
+    for sample in range(num_skip):
+        accepted = Sampler.exact_sample()
+    
     for sample in range(num_samples):
         accepted = Sampler.exact_sample()
         x[N*sample:N*(sample+1)] = WaveFunction.x
@@ -112,12 +120,11 @@ def plot_reinforcement_snapshots(N, M, samples, nu):
 
     plt.ylim(-0.1,0.7)
     plt.xlim(-4,4)
-    plt.ylabel(r'Probability distribution $|\Psi(x)|^2$', fontsize=14)
-    plt.xlabel(r'Positions $x$', fontsize=14)
-    plt.title('Reinforcement learning of the wave function for the interacting case', fontsize=16)
-    plt.legend(loc='upper right')
-    plt.show()
-    #plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_supervised_snapshots.png', format='png')
+    plt.ylabel(r'Probability distribution $|\Psi(x)|^2$', fontsize=20)
+    plt.xlabel(r'Positions $x$', fontsize=20)
+    plt.title('Reinforcement learning of the wave function for the interacting case', fontsize=24)
+    plt.legend(loc='upper right', fontsize=20)
+    plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_reinforcement_snapshots.png', format='png')
 
 #plot_reinforcement_snapshots(2, 20, 10000, 2.0)
 
@@ -156,10 +163,10 @@ def plot_supervised_snapshots_N1(M):
     
     plt.ylim(-0.1,1.5)
     plt.xlim(-5,5)
-    plt.ylabel(r'Ground state wave function $\Psi(x)$', fontsize=14)
-    plt.xlabel(r'Position $x$', fontsize=14)
-    plt.title(r'Supervised learning of the wave function for the non-interacting case', fontsize=16)
-    plt.legend(loc='upper right', fontsize=14)
+    plt.ylabel(r'Ground state wave function $\Psi(x)$', fontsize=20)
+    plt.xlabel(r'Position $x$', fontsize=20)
+    plt.title(r'Supervised learning of the wave function for the non-interacting case', fontsize=24)
+    plt.legend(loc='upper right', fontsize=20)
     plt.savefig('figures/N1_M'+str(M)+'_supervised_snapshots.png', format='png')
     
     
@@ -183,8 +190,8 @@ def plot_supervised_snapshots(N, M):
         plt.figure(figsize=(12,8))
         sns.set_style("whitegrid")
         colors = cm.rainbow_r(np.linspace(0, 1, len(snapshots)))
-        num_samples = 300000
-        num_skip = 3000
+        num_samples = 1000000
+        num_skip = 1
     
         #index = [0, 3, 4, 5, 7, 9, 13]
         for snapshot, color in zip(snapshots, colors):
@@ -211,12 +218,12 @@ def plot_supervised_snapshots(N, M):
 
         plt.ylim(-0.1,0.7)
         plt.xlim(-4,4)
-        plt.ylabel(r'Probability distribution $|\Psi(x)|^2$', fontsize=14)
-        plt.xlabel(r'Positions $x$', fontsize=14)
-        plt.title('Supervised learning of the wave function for the non-interacting case', fontsize=16)
-        plt.legend(loc='upper right')
-        plt.show()
-        #plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_supervised_snapshots.png', format='png')
+        plt.ylabel(r'Probability distribution $|\Psi(x)|^2$', fontsize=20)
+        plt.xlabel(r'Positions $x$', fontsize=20)
+        plt.title('Supervised learning of the wave function for the non-interacting case', fontsize=24)
+        plt.legend(loc='upper right', fontsize=20)
+        plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_supervised_snapshots.png', format='png')
 
 
 #plot_supervised_snapshots(2, 20)
+plot_supervised_snapshots(5,20)

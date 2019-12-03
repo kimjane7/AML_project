@@ -73,7 +73,7 @@ class VariationalMonteCarlo:
         patience = 50
         min_gradient = 1
         min_gradient_cycles = 0
-        min_samples = 40000
+        min_samples = 100000
         samples = min_samples
 
         # training progress
@@ -101,11 +101,11 @@ class VariationalMonteCarlo:
                     optimize = False
         
             # get data, calculate cost, update parameters
-            num_norm_samples = int(0.9*samples*self.wavefunction.N)
-            norm_samples = np.random.normal(0.0, 1.0, num_norm_samples)
-            unif_samples = np.random.uniform(-10.0, 10.0, samples*self.wavefunction.N-num_norm_samples)
+            num_norm_samples = int(0.90*samples*self.wavefunction.N)
+            norm_samples = np.random.normal(0.0, 1/np.sqrt(2.0), num_norm_samples)
+            unif_samples = np.random.uniform(-7.0, 7.0, samples*self.wavefunction.N-num_norm_samples)
             X = np.concatenate([norm_samples, unif_samples])
-            np.random.shuffle(X)
+            #np.random.shuffle(X)
             X = X.reshape(samples, self.wavefunction.N)
             self.calc_cost_gradient(X)
             self.optimizer.update_params(self.gradient)
@@ -120,7 +120,7 @@ class VariationalMonteCarlo:
                 min_gradient_cycles = cycles
                 
             elif cycles-min_gradient_cycles > patience:
-                samples += 20000
+                samples += 50000
                 min_gradient = np.linalg.norm(self.gradient)
                 min_gradient_cycles = cycles
                 print('Increasing number of samples to {0} at cycle {1}...'.format(samples, cycles))
