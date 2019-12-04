@@ -52,8 +52,7 @@ def plot_reinforcement_EL(N, M, samples, nu):
     print("Final ground state energy prediction: E = {0}, variance = {1}".format(Y[-1], Y_var[-1]))
     
     fig, ax = plt.subplots(figsize=(12,8))
-    plt.plot(cycle, EL, color='royalblue', alpha=0.3, linewidth=0.1)
-    plt.plot([0], [0], color='royalblue', alpha=0.3, linewidth=1.0, label='Raw Data')
+    plt.plot(cycle, EL, color='royalblue', alpha=0.5, linewidth=0.1, label='Raw Data')
     plt.plot(X, Y, color='royalblue', linewidth=1.0, label='Average Over 100 Iterations')
     plt.axhline(E0, color='k', linewidth=1.0, label='True Ground State Energy')
     plt.axhline(0.5*N, color='k', linewidth=1.0, linestyle='dashed', label='Non-Interacting Ground State Energy')
@@ -70,7 +69,7 @@ def plot_reinforcement_EL(N, M, samples, nu):
     plt.savefig('figures/EL_N'+str(N)+'_M'+str(M)+'_samples'+str(samples)+'_nu'+str(nu)+'.pdf', format='pdf')
 
 plot_reinforcement_EL(2, 20, 10000, 2.0)
-plot_reinforcement_EL(4, 20, 10000, 2.0)
+#plot_reinforcement_EL(4, 20, 10000, 2.0)
 
 ##############################################################
 ##############################################################
@@ -87,7 +86,7 @@ def plot_reinforcement_fidelity(N, M, samples, nu):
     print("Final fidelity: F = {0}".format(Y[-1]))
     
     fig, ax = plt.subplots(figsize=(12,8))
-    plt.plot(cycle, fidelity, color='royalblue', alpha=0.3, linewidth=0.1, label='Raw Data')
+    plt.plot(cycle, fidelity, color='royalblue', alpha=0.5, linewidth=0.1, label='Raw Data')
     plt.plot(X, Y, color='royalblue', linewidth=2.0, label='Average Over 100 Iterations')
     plt.axhline(fidelity[0], color='k', linestyle='dashed', linewidth=2.0, label='Initial Overlap Integral')
     ax.annotate('Final Overlap Integral = '+str(round(Y[-1],5)), xy=(0.999*cycle[-1], 0.99), xytext=(0.5*cycle[-1], 0.7), arrowprops=dict(facecolor='black', width=1, shrink=0.01, headwidth=5, headlength=5), size=20)
@@ -101,8 +100,7 @@ def plot_reinforcement_fidelity(N, M, samples, nu):
     plt.legend(loc='lower right', fontsize=20)
     plt.savefig('figures/fidelity_N'+str(N)+'_M'+str(M)+'_samples'+str(samples)+'_nu'+str(nu)+'.pdf', format='pdf')
 
-#plot_reinforcement_fidelity(2, 20, 10000, 2.0)
-#plot_reinforcement_fidelity(4, 20, 10000, 2.0)
+plot_reinforcement_fidelity(2, 20, 10000, 2.0)
 
 ##############################################################
 ##############################################################
@@ -123,15 +121,15 @@ def plot_reinforcement_snapshots(N, M, samples, nu):
     plt.figure(figsize=(12,8))
     sns.set_style("whitegrid")
     colors = cm.rainbow_r(np.linspace(0, 1, len(snapshots)))
-    num_samples = 10000
-    num_skip = 1000
+    num_samples = 300000
+    num_skip = 5000
 
-    index = [i for i in range(0, len(snapshots), 3)]
+    index = [0, 10, 19, 29, 39]
     for snapshot, color in zip([snapshots[i] for i in index], [colors[i] for i in index]):
         
         WaveFunction.alpha = np.array(snapshot.split()[1:]).astype(np.float)
         WaveFunction.separate()
-        WaveFunction.x = np.random.normal(0, 1, N)
+        WaveFunction.x = np.random.normal(0, 1/np.sqrt(2), N)
         
         for sample in range(num_skip):
             accepted = Sampler.sample()
@@ -142,13 +140,26 @@ def plot_reinforcement_snapshots(N, M, samples, nu):
             x[N*sample:N*(sample+1)] = WaveFunction.x
             
         sns.kdeplot(x, shade=True, linewidth=2, color=color, label=str(snapshot.split()[0])+' updates')
-        
-        num_samples += 1000
+
      
-    num_samples = 10000000
-    x = np.empty(N*num_samples)
+    num_samples = 5000000
+    WaveFunction.alpha = np.array(snapshots[-1].split()[1:]).astype(np.float)
+    WaveFunction.separate()
+    WaveFunction.x = np.random.normal(0, 1/np.sqrt(2), N)
     
-    WaveFunction.x = np.random.normal(0, 1, N)
+    for sample in range(num_skip):
+        accepted = Sampler.sample()
+        
+    x = np.empty(N*num_samples)
+    for sample in range(num_samples):
+        accepted = Sampler.sample()
+        x[N*sample:N*(sample+1)] = WaveFunction.x
+        
+    sns.kdeplot(x, shade=True, linewidth=2, color=colors[-1], label=str(snapshots[-1].split()[0])+' updates')
+    
+    num_samples = 5000000
+    x = np.empty(N*num_samples)
+    WaveFunction.x = np.random.normal(0, 1/np.sqrt(2), N)
     
     for sample in range(num_skip):
         accepted = Sampler.exact_sample()
@@ -162,14 +173,14 @@ def plot_reinforcement_snapshots(N, M, samples, nu):
 
     plt.ylim(-0.1,0.7)
     plt.xlim(-4,4)
-    plt.ylabel(r'Probability distribution $|\Psi(x)|^2$', fontsize=20)
+    plt.ylabel(r'Probability Distribution $|\Psi(x)|^2$', fontsize=20)
     plt.xlabel(r'Positions $x$', fontsize=20)
-    plt.title('Reinforcement learning of the wave function for the interacting case', fontsize=24)
+    plt.title('Reinforcement Learning of the Wave Function for $N$ = '+str(N)+r'$, \ \nu$ = '+str(nu), fontsize=24)
     plt.legend(loc='upper right', fontsize=20)
     plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_reinforcement_snapshots.pdf', format='pdf')
 
-#plot_reinforcement_snapshots(4, 20, 10000, 2.0)
 #plot_reinforcement_snapshots(2, 20, 10000, 2.0)
+#plot_reinforcement_snapshots(4, 20, 10000, 2.0)
 
 ##############################################################
 ##############################################################
@@ -186,7 +197,7 @@ def plot_supervised_snapshots(N, M):
         WaveFunction = FeedForwardNeuralNetwork(1, M)
         Hamiltonian = CalogeroSutherland(WaveFunction, 0.0, 0.0)
         
-        plt.figure(figsize=(12,8))
+        fig, ax = plt.subplots(figsize=(12,8))
         colors = cm.rainbow_r(np.linspace(0, 1, len(snapshots)))
         
         num_points = 200
@@ -213,6 +224,7 @@ def plot_supervised_snapshots(N, M):
         plt.ylabel(r'Ground state wave function $\Psi(x)$', fontsize=20)
         plt.xlabel(r'Position $x$', fontsize=20)
         plt.title(r'Supervised learning of the wave function for the non-interacting case', fontsize=24)
+        ax.tick_params(axis='both', which='major', labelsize=16)
         plt.legend(loc='upper right', fontsize=20)
         plt.savefig('figures/N1_M'+str(M)+'_supervised_snapshots.pdf', format='pdf')
         
@@ -226,15 +238,16 @@ def plot_supervised_snapshots(N, M):
         Hamiltonian = CalogeroSutherland(WaveFunction, 0.0, 0.0)
         Sampler = ImportanceSampling(Hamiltonian, 0.005)
         
-        plt.figure(figsize=(12,8))
+        fig, ax = plt.subplots(figsize=(12,8))
         sns.set_style("whitegrid")
         colors = cm.rainbow_r(np.linspace(0, 1, len(snapshots)))
-        num_samples = 1000000
+        num_samples = 100000
         num_skip = 1
     
-        #index = [0, 3, 4, 5, 7, 9, 13]
-        for snapshot, color in zip(snapshots, colors):
-        #for snapshot, color in zip([snapshots[i] for i in index], [colors[i] for i in index]):
+        
+        #for snapshot, color in zip(snapshots, colors):
+        index = [0, 2, 4, 5, 7, 9]
+        for snapshot, color in zip([snapshots[i] for i in index], [colors[i] for i in index]):
             
             WaveFunction.alpha = np.array(snapshot.split()[1:]).astype(np.float)
             WaveFunction.separate()
@@ -250,18 +263,32 @@ def plot_supervised_snapshots(N, M):
                 
             sns.kdeplot(x, shade=True, linewidth=2, color=color, label=str(snapshot.split()[0])+' updates')
         
+        num_samples = 1000000
+        WaveFunction.alpha = np.array(snapshots[-1].split()[1:]).astype(np.float)
+        WaveFunction.separate()
+        WaveFunction.x = np.random.normal(0, 1/np.sqrt(2), N)
         
+        for sample in range(num_skip):
+            accepted = Sampler.sample()
+            
+        x = np.empty(N*num_samples)
+        for sample in range(num_samples):
+            accepted = Sampler.sample()
+            x[N*sample:N*(sample+1)] = WaveFunction.x
+            
+        sns.kdeplot(x, shade=True, linewidth=2, color=colors[-1], label=str(snapshots[-1].split()[0])+' updates')
+        
+        num_samples = 10000000
         x = np.random.normal(0, 1/np.sqrt(2), N*num_samples)
         sns.kdeplot(x, shade=False, linewidth=3, color='k', linestyle='dashed', label=r'$|\Psi_0^{non\text{-}int}(x)|^2$')
-        
 
         plt.ylim(-0.1,0.7)
         plt.xlim(-4,4)
-        plt.ylabel(r'Probability distribution $|\Psi(x)|^2$', fontsize=20)
+        plt.ylabel(r'Probability Distribution $|\Psi(x)|^2$', fontsize=20)
         plt.xlabel(r'Positions $x$', fontsize=20)
-        plt.title('Supervised learning of the wave function for the non-interacting case', fontsize=24)
+        plt.title('Supervised Learning of the Wave Function for the Non-Interacting Case', fontsize=24)
+        ax.tick_params(axis='both', which='major', labelsize=16)
         plt.legend(loc='upper right', fontsize=20)
         plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_supervised_snapshots.pdf', format='pdf')
-
 
 #plot_supervised_snapshots(2, 20)
