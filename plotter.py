@@ -68,7 +68,7 @@ def plot_reinforcement_EL(N, M, samples, nu):
     plt.savefig('figures/EL_N'+str(N)+'_M'+str(M)+'_samples'+str(samples)+'_nu'+str(nu)+'.pdf', format='pdf')
 
 #plot_reinforcement_EL(2, 20, 10000, 2.0)
-plot_reinforcement_EL(4, 20, 10000, 2.0)
+#plot_reinforcement_EL(4, 20, 10000, 2.0)
 
 ##############################################################
 ##############################################################
@@ -141,7 +141,7 @@ def plot_reinforcement_snapshots(N, M, samples, nu):
         sns.kdeplot(x, shade=True, linewidth=2, color=color, label=str(snapshot.split()[0])+' updates')
 
      
-    num_samples = 5000000
+    num_samples = 10000000
     WaveFunction.alpha = np.array(snapshots[-1].split()[1:]).astype(np.float)
     WaveFunction.separate()
     WaveFunction.x = np.random.normal(0, 1/np.sqrt(2), N)
@@ -156,7 +156,6 @@ def plot_reinforcement_snapshots(N, M, samples, nu):
         
     sns.kdeplot(x, shade=True, linewidth=2, color=colors[-1], label=str(snapshots[-1].split()[0])+' updates')
     
-    num_samples = 5000000
     x = np.empty(N*num_samples)
     WaveFunction.x = np.random.normal(0, 1/np.sqrt(2), N)
     
@@ -171,7 +170,7 @@ def plot_reinforcement_snapshots(N, M, samples, nu):
     
 
     plt.ylim(-0.1,0.7)
-    plt.xlim(-4,4)
+    plt.xlim(-6,6)
     plt.ylabel(r'Probability Distribution $|\Psi(x)|^2$', fontsize=20)
     plt.xlabel(r'Positions $x$', fontsize=20)
     plt.title('Reinforcement Learning of the Wave Function for $N$ = '+str(N)+r'$, \ \nu$ = '+str(nu), fontsize=24)
