@@ -8,7 +8,6 @@ import matplotlib.cm as cm
 from matplotlib import rc
 import seaborn as sns
 
-plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 mpl.rcParams['text.usetex'] = True
 mpl.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}']
@@ -52,8 +51,8 @@ def plot_reinforcement_EL(N, M, samples, nu):
     print("Final ground state energy prediction: E = {0}, variance = {1}".format(Y[-1], Y_var[-1]))
     
     fig, ax = plt.subplots(figsize=(12,8))
-    plt.plot(cycle, EL, color='royalblue', alpha=0.5, linewidth=0.1, label='Raw Data')
-    plt.plot(X, Y, color='royalblue', linewidth=1.0, label='Average Over 100 Iterations')
+    plt.plot(cycle, EL, color='royalblue', alpha=0.4, linewidth=0.1, label='Raw Data')
+    plt.plot(X, Y, color='royalblue', linewidth=2.0, label='Average Over 100 Iterations')
     plt.axhline(E0, color='k', linewidth=1.0, label='True Ground State Energy')
     plt.axhline(0.5*N, color='k', linewidth=1.0, linestyle='dashed', label='Non-Interacting Ground State Energy')
     ax.annotate('Final Energy Estimation = '+str(round(Y[-1],5)), xy=(0.999*cycle[-1], 0.99*E0), xytext=(0.5*cycle[-1], 0.5*(E0+0.5*N)), arrowprops=dict(facecolor='black', width=1, shrink=0.01, headwidth=5, headlength=5), size=20)
@@ -68,8 +67,8 @@ def plot_reinforcement_EL(N, M, samples, nu):
     plt.legend(loc='upper right', fontsize=20)
     plt.savefig('figures/EL_N'+str(N)+'_M'+str(M)+'_samples'+str(samples)+'_nu'+str(nu)+'.pdf', format='pdf')
 
-plot_reinforcement_EL(2, 20, 10000, 2.0)
-#plot_reinforcement_EL(4, 20, 10000, 2.0)
+#plot_reinforcement_EL(2, 20, 10000, 2.0)
+plot_reinforcement_EL(4, 20, 10000, 2.0)
 
 ##############################################################
 ##############################################################
@@ -86,7 +85,7 @@ def plot_reinforcement_fidelity(N, M, samples, nu):
     print("Final fidelity: F = {0}".format(Y[-1]))
     
     fig, ax = plt.subplots(figsize=(12,8))
-    plt.plot(cycle, fidelity, color='royalblue', alpha=0.5, linewidth=0.1, label='Raw Data')
+    plt.plot(cycle, fidelity, color='royalblue', alpha=0.4, linewidth=0.1, label='Raw Data')
     plt.plot(X, Y, color='royalblue', linewidth=2.0, label='Average Over 100 Iterations')
     plt.axhline(fidelity[0], color='k', linestyle='dashed', linewidth=2.0, label='Initial Overlap Integral')
     ax.annotate('Final Overlap Integral = '+str(round(Y[-1],5)), xy=(0.999*cycle[-1], 0.99), xytext=(0.5*cycle[-1], 0.7), arrowprops=dict(facecolor='black', width=1, shrink=0.01, headwidth=5, headlength=5), size=20)
@@ -100,7 +99,7 @@ def plot_reinforcement_fidelity(N, M, samples, nu):
     plt.legend(loc='lower right', fontsize=20)
     plt.savefig('figures/fidelity_N'+str(N)+'_M'+str(M)+'_samples'+str(samples)+'_nu'+str(nu)+'.pdf', format='pdf')
 
-plot_reinforcement_fidelity(2, 20, 10000, 2.0)
+#plot_reinforcement_fidelity(2, 20, 10000, 2.0)
 
 ##############################################################
 ##############################################################
@@ -180,7 +179,7 @@ def plot_reinforcement_snapshots(N, M, samples, nu):
     plt.savefig('figures/N'+str(N)+'_M'+str(M)+'_reinforcement_snapshots.pdf', format='pdf')
 
 #plot_reinforcement_snapshots(2, 20, 10000, 2.0)
-#plot_reinforcement_snapshots(4, 20, 10000, 2.0)
+plot_reinforcement_snapshots(4, 20, 10000, 2.0)
 
 ##############################################################
 ##############################################################
